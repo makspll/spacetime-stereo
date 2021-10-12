@@ -1,0 +1,4 @@
+[submodule "reproductions/LEAStereo"]
+	path = reproductions/LEAStereo
+	url = https://github.com/XuelianCheng/LEAStereo.git
+	ignore = dirty
