@@ -1,4 +1,6 @@
-[submodule "reproductions/LEAStereo"]
-	path = reproductions/LEAStereo
+[submodule "src/reproductions/GCNet"]
+	path = src/reproductions/GCNet
+	url = https://github.com/zyf12389/GC-Net.git
+[submodule "src/reproductions/LEAStereo"]
+	path = src/reproductions/LEAStereo
 	url = https://github.com/XuelianCheng/LEAStereo.git
-	ignore = dirty
