@@ -3,4 +3,4 @@ import numpy as np
 
 
 def load_rgb_img(path):
-    return Image.open(path)
+    return np.asarray(Image.open(path))

@@ -19,6 +19,8 @@ class LEAStereo(nn.Module):
         x = self.feature(x)       
         y = self.feature(y) 
 
+        print(x.size())
+        
         with torch.cuda.device_of(x):
             cost = x.new().resize_(x.size()[0], x.size()[1]*2, int(self.max_disp/3),  x.size()[2],  x.size()[3]).zero_() 
         for i in range(int(self.max_disp/3)):
