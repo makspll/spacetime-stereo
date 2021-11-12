@@ -19,7 +19,6 @@ class LEAStereo(nn.Module):
         x = self.feature(x)       
         y = self.feature(y) 
 
-        print(x.size())
         
         with torch.cuda.device_of(x):
             cost = x.new().resize_(x.size()[0], x.size()[1]*2, int(self.max_disp/3),  x.size()[2],  x.size()[3]).zero_() 
@@ -86,6 +85,7 @@ class LEAStereo(nn.Module):
 
 class MatchingNetwork(nn.Module):
     def __init__(self,
+            in_channels=64,
             resolution_levels=[1,1,2,2,1,2,2,2,1,1,0,1], 
             resolution_level_to_disparities={0: 8,1: 16, 2: 32, 3: 64},
             skip_connections=[0,4,0,0,8,0,0,0,0,0,0,0]):     
@@ -95,8 +95,8 @@ class MatchingNetwork(nn.Module):
         assert(resolution_levels[-1] == 1 and resolution_levels[0] == 1)
 
         self.cells = nn.ModuleList()
-        in_disparities=64
-
+        in_disparities=in_channels
+    
         self.stem0 = Ops.ConvBR(in_disparities, in_disparities//2, 3, stride=1, padding=1, dim=3)
         self.stem1 = Ops.ConvBR(in_disparities//2, in_disparities//2, 3, stride=1, padding=1, dim=3)
         self.skip_connections = skip_connections
@@ -104,8 +104,8 @@ class MatchingNetwork(nn.Module):
         for c_params in cell_params_iterator(in_disparities//2,resolution_levels,resolution_level_to_disparities):
             self.cells.append(Matching.MatchingCell(**c_params))
 
-        self.conv_out  = Ops.ConvBR(in_disparities//2, 1, 3, stride=1, padding=1,  bn=False, relu=False, dim=3)  
-        self.last_6  = Ops.ConvBR(in_disparities , in_disparities//2, 1, stride=1, padding=0,dim=3)  
+        self.conv_out  = Ops.ConvBR(64//2, 1, 3, stride=1, padding=1,  bn=False, relu=False, dim=3)  
+        self.last_6  = Ops.ConvBR(resolution_level_to_disparities[resolution_levels[-1]]*4 , 64//2, 1, stride=1, padding=0,dim=3)  
 
 
         self.skips = nn.ModuleList()
@@ -127,12 +127,12 @@ class MatchingNetwork(nn.Module):
         stem1 = self.stem1(stem0)
         out = (stem0, stem1)
 
+
         skip_buffer = [None]*len(self.skip_connections)
         skips_count = 0
         for i,c in enumerate(self.cells):
 
             out = c(out[0],out[1])
-            
             if self.skip_connections[i] != 0:
                 skip_buffer[self.skip_connections[i]] = (skips_count,out[1])
                 skips_count += 1
@@ -147,7 +147,9 @@ class MatchingNetwork(nn.Module):
 
         upsample_6  = nn.Upsample(size=x.size()[2:], mode='trilinear', align_corners=True)
 
-        mat = self.conv_out(upsample_6(self.last_6(last_output)))
+        mat = self.last_6(last_output)
+        mat = upsample_6(mat)
+        mat = self.conv_out(mat)
 
         return mat  
 

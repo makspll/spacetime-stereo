@@ -8,7 +8,7 @@ import csv
 
 class Kitti15Dataset(data.Dataset):
     def __init__(self,abspath,training=True, indices = [], transform=None, test_phase=False, keys=
-        set(['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index'])) -> None:
+        set(['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','fl','resolution','index'])) -> None:
         """ Indices must be in 0-199"""
         self.keys = keys
         self.abspath = abspath
@@ -20,7 +20,7 @@ class Kitti15Dataset(data.Dataset):
         self.key_idxs = {}
 
         idx = 0
-        for k in ['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index']:
+        for k in ['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fl','fgmap','resolution','index']:
             if k in self.keys:
                 self.key_idxs[k] = idx
                 idx+=1
@@ -76,6 +76,24 @@ class Kitti15Dataset(data.Dataset):
             disparity_t1_noc_path = os.path.join(directory,'disp_noc_1',f'{index_string}_10.png')
             labels.append(load_rgb_img(disparity_t1_noc_path)/256)
 
+        if 'fl' in self.keys:
+            import cv2
+            flow_left_path = os.path.join(directory,'flow_occ',f'{index_string}_10.png')
+            flo_file = cv2.imread(flow_left_path, -1)
+            flo_img = flo_file[:,:,3:0:-1].astype(np.float32)
+            invalid = (flo_file[:,:,0] == 0)
+            flo_img = flo_img - 32768
+            flo_img = flo_img / 64 
+            flo_img[np.abs(flo_img) < 1e-10] = 1e-10
+            flo_img[invalid, :] = 0
+            
+            # fl = load_rgb_img(flow_left_path).astype(float)
+            # print(fl[:,:,2].mean())
+            # fl[:,:,0:2] = (fl[:,:,0:2] - 2**15) / 64.0
+            # # fl[:,:,2] = fl[:,:,2] > 0
+            # print(fl[:,:,2].max())
+            # labels.append(fl)
+            labels.append(flo_img)
 
         outputs = [*inputs,*labels]
         if 'fgmap' in self.keys:

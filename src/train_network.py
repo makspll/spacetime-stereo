@@ -145,6 +145,13 @@ if __name__ == "__main__":
     if epochs > 10:
         save_every = 15
 
+    if args.freeze_starting_with:
+        for n,param in model.named_parameters():
+            if n.startswith(args.freeze_starting_with):
+                param.requires_grad = False 
+                param.grad = None 
+                
+
     with open(os.path.join(out_path,'parameters.txt'),'w') as f:
         f.write(str({k:v for k,v in optimizer.param_groups[0].items() if k != 'params'} ) + '\n')
         f.write(str(scheduler.state_dict()) + '\n')
