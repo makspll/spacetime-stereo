@@ -1,13 +1,9 @@
 from random import randint
 import time
 import torch.nn.functional as F
-
 from torch.autograd.variable import Variable
-
 from .augmentations.image_prep import kitti_transform
 import os 
-from skimage import io
-import numpy as np
 import torch 
 import sys
 from .metrics import bad_n_error, AreaSource
@@ -21,8 +17,9 @@ class OpticalFlowWarpGT():
 
 
 class GenericRunner():
-    def __init__(self, args, training=False) -> None:
+    def __init__(self, model_cls, args, training=False) -> None:
         self.keys = set()
+        self.model_cls = model_cls
 
     def get_keys(self):
         return self.keys
@@ -53,8 +50,26 @@ class GenericRunner():
             "outputs" : temp,
         }
 
-    def get_model(self, weights_path):
-        raise NotImplementedError()
+    def get_model(self, weights_path, weights_source):
+        torch.backends.cudnn.benchmark = True
+
+        cuda = self.device == 'cuda'
+        if cuda and not torch.cuda.is_available():
+            raise Exception("No GPU found, please run without --cuda")
+
+        model = self.model_cls()
+
+        if cuda:
+            model = torch.nn.DataParallel(model).cuda()
+        
+        if weights_path: #opt.resume:
+            if os.path.isfile(weights_path):
+                print("=> loading checkpoint '{}'".format(weights_path))
+                checkpoint = torch.load(weights_path)
+                model.load_state_dict(model.module.convert_weights(checkpoint['state_dict'],weights_source), strict=True)      
+            else:
+                print("=> no checkpoint found at '{}'".format(weights_path))
+        return model
 
     def get_model_io(self,batch):
         raise NotImplementedError()
@@ -137,7 +152,11 @@ class GenericRunner():
         return (acc_all / valid_iteration, (epoch_loss/ valid_iteration))
 
 class LEASTereoRunner(GenericRunner):
+    
     def __init__(self,args, training=False) -> None:
+        from models.LEAStereo import LEAStereo
+
+        super().__init__(LEAStereo,args,training)
         self.args = args
         
         dataset = args.dataset
@@ -181,28 +200,6 @@ class LEASTereoRunner(GenericRunner):
 
         return inputs 
 
-    def get_model(self, weights_path):
-  
-        torch.backends.cudnn.benchmark = True
-
-        cuda = self.device == 'cuda'
-        if cuda and not torch.cuda.is_available():
-            raise Exception("No GPU found, please run without --cuda")
-
-        from models.LEAStereo import LEAStereo
-        model = LEAStereo()
-
-        if cuda:
-            model = torch.nn.DataParallel(model).cuda()
-        
-        if weights_path: #opt.resume:
-            if os.path.isfile(weights_path):
-                print("=> loading checkpoint '{}'".format(weights_path))
-                checkpoint = torch.load(weights_path)
-                model.load_state_dict(model.module.convert_weights(checkpoint['state_dict']), strict=True)      
-            else:
-                print("=> no checkpoint found at '{}'".format(weights_path))
-        return model
 
     def get_model_io_from_sample(self, sample, keys):
         return [sample[keys['l0']],sample[keys['r0']]], [sample[keys['d0']]]
@@ -225,8 +222,10 @@ class LEASTereoRunner(GenericRunner):
 
 class STSEarlyFusionConcatRunner(LEASTereoRunner):
     def __init__(self,args, training=False) -> None:
+        from models.STSEarlyFusionConcat import STSEarlyFusionConcat
 
         super().__init__(args,training)
+        self.model_cls = STSEarlyFusionConcat
 
         if self.training:
             self.keys = set(['l0','r0','l1','r1','d0','d1'])
@@ -272,27 +271,7 @@ class STSEarlyFusionConcatRunner(LEASTereoRunner):
                 torch.squeeze(batch[2],1),
                 torch.squeeze(batch[3],1)], [torch.squeeze(batch[4],1).float(),
                                             torch.squeeze(batch[5],1).float()]
-    def get_model(self, weights_path):
-        torch.backends.cudnn.benchmark = True
 
-        cuda = self.device == 'cuda'
-        if cuda and not torch.cuda.is_available():
-            raise Exception("No GPU found, please run without --cuda")
-
-        from models.STSEarlyFusionConcat import STSEarlyFusionConcat
-        model = STSEarlyFusionConcat()
-
-        if cuda:
-            model = torch.nn.DataParallel(model).cuda()
-        
-        if weights_path: #opt.resume:
-            if os.path.isfile(weights_path):
-                print("=> loading checkpoint '{}'".format(weights_path))
-                checkpoint = torch.load(weights_path)
-                model.load_state_dict(model.module.convert_weights(checkpoint['state_dict']), strict=False)      
-            else:
-                print("=> no checkpoint found at '{}'".format(weights_path))
-        return model
 
     # def loss_accuracy_function(self, outputs, targets):
     #         target = targets[0]

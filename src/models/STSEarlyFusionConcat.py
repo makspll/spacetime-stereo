@@ -47,33 +47,36 @@ class STSEarlyFusionConcat(LEAStereo):
         disp = self.disp(cost)    
         return disp
 
-    def convert_weights(self,state_dict):
-        state_dict = super().convert_weights(state_dict)
+    def convert_weights(self,state_dict, weights_source):
+        state_dict = super().convert_weights(state_dict, weights_source)
 
 
-        # clear affected weights
+        if weights_source is type(self):
+            return state_dict
+        elif weights_source is type(LEAStereo):
+            # clear affected weights
 
-        filters = set(["module.matching.cells.0.pre_preprocess.conv.weight",
-                        "module.matching.cells.0.preprocess.conv.weight",
-                        "module.matching.cells.1.pre_preprocess.conv.weight",
-                        "module.matching.stem0.conv.weight",
-                        "module.matching.stem0.bn.weight",
-                        "module.matching.stem0.bn.bias",
-                        "module.matching.stem0.bn.running_mean",
-                        "module.matching.stem0.bn.running_var",
-                        "module.matching.stem1.conv.weight",
-                        "module.matching.stem1.bn.weight",
-                        "module.matching.stem1.bn.bias",
-                        "module.matching.stem1.bn.running_mean",
-                        "module.matching.stem1.bn.running_var"])
+            filters = set(["module.matching.cells.0.pre_preprocess.conv.weight",
+                            "module.matching.cells.0.preprocess.conv.weight",
+                            "module.matching.cells.1.pre_preprocess.conv.weight",
+                            "module.matching.stem0.conv.weight",
+                            "module.matching.stem0.bn.weight",
+                            "module.matching.stem0.bn.bias",
+                            "module.matching.stem0.bn.running_mean",
+                            "module.matching.stem0.bn.running_var",
+                            "module.matching.stem1.conv.weight",
+                            "module.matching.stem1.bn.weight",
+                            "module.matching.stem1.bn.bias",
+                            "module.matching.stem1.bn.running_mean",
+                            "module.matching.stem1.bn.running_var"])
 
 
-        new_state_dict = {}
+            new_state_dict = {}
 
-        for k in state_dict:
-            if k in filters:
-                continue
-            new_state_dict[k] = state_dict[k]
+            for k in state_dict:
+                if k in filters:
+                    continue
+                new_state_dict[k] = state_dict[k]
 
-        return new_state_dict
+            return new_state_dict
 

@@ -35,9 +35,13 @@ class LEAStereo(nn.Module):
         disp = self.disp(cost)    
         return disp
     
-    def convert_weights(self,state_dict):
+    def convert_weights(self,state_dict,weights_source):
         new_state_dict = {}
-        
+
+        if (weights_source is type(self)):
+            return state_dict
+
+        # for actual LEAStereo weights 
         replacings = {
             # feature cells
             lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.0','\\1conv_prev_prev_to_zero',s), # 0 
@@ -86,6 +90,7 @@ class LEAStereo(nn.Module):
 class MatchingNetwork(nn.Module):
     def __init__(self,
             in_channels=64,
+            out_channels=1,
             resolution_levels=[1,1,2,2,1,2,2,2,1,1,0,1], 
             resolution_level_to_disparities={0: 8,1: 16, 2: 32, 3: 64},
             skip_connections=[0,4,0,0,8,0,0,0,0,0,0,0]):     
@@ -104,8 +109,10 @@ class MatchingNetwork(nn.Module):
         for c_params in cell_params_iterator(in_disparities//2,resolution_levels,resolution_level_to_disparities):
             self.cells.append(Matching.MatchingCell(**c_params))
 
-        self.conv_out  = Ops.ConvBR(64//2, 1, 3, stride=1, padding=1,  bn=False, relu=False, dim=3)  
-        self.last_6  = Ops.ConvBR(resolution_level_to_disparities[resolution_levels[-1]]*4 , 64//2, 1, stride=1, padding=0,dim=3)  
+        features_last_layer = resolution_level_to_disparities[resolution_levels[-1]]*4
+
+        self.conv_out  = Ops.ConvBR(features_last_layer//2, out_channels, 3, stride=1, padding=1,  bn=False, relu=False, dim=3)  
+        self.last_6  = Ops.ConvBR(features_last_layer , features_last_layer//2, 1, stride=1, padding=0,dim=3)  
 
 
         self.skips = nn.ModuleList()

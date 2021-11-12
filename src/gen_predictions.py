@@ -1,13 +1,12 @@
 import json
 import os
 import numpy as np
-import skimage
+from skimage.io import imsave 
 import csv
 import torch
 from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner 
 from datasets import Kitti15Dataset
 from args import PARSER
-
 torch.manual_seed(0)
 import random
 random.seed(0)
@@ -35,6 +34,7 @@ if __name__ == "__main__":
     args = PARSER.parse_args()
     splits = get_splits(args.file)
     method = METHODS[args.method](args)
+    resume_method = METHODS[args.resume_method](args)
     indices = splits[args.dataset][args.method][args.datasetsplit][args.splitname]
     dataset = DATASETS[args.dataset](
         args.datasetsplit == "training", 
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         method.transform,
         True, # test phase
         method.get_keys())
-    model = method.get_model(args.resume)
+    model = method.get_model(args.resume,resume_method.model_cls)
     model.eval()
 
     torch.backends.cudnn.benchmark = True
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
         # save images for reference
         output["outputs"] = (output["outputs"] * 256).astype('uint16')
-        skimage.io.imsave(target_dir, output["outputs"])
+        imsave(target_dir, output["outputs"])
 
     # average each column apart from first one
     average_row = []
