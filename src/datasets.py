@@ -8,7 +8,8 @@ import csv
 
 class Kitti15Dataset(data.Dataset):
     def __init__(self,abspath,training=True, indices = [], transform=None, test_phase=False, keys=
-        set(['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','fl','resolution','index'])) -> None:
+        set(['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','fl','resolution','index']),
+        permute_keys=set()) -> None:
         """ Indices must be in 0-199"""
         self.keys = keys
         self.abspath = abspath
@@ -16,7 +17,7 @@ class Kitti15Dataset(data.Dataset):
         self.training = training # whether to use the training set split
         self.test_phase = test_phase # decides which transform to use
         self.transform = transform
-
+        self.permute_keys = permute_keys
         self.key_idxs = {}
 
         idx = 0
@@ -107,6 +108,10 @@ class Kitti15Dataset(data.Dataset):
         if 'index' in self.keys:
             outputs.append(index_string)
 
+        # shuffle requested keys
+        for pk in self.permute_keys:
+            np.random.shuffle(outputs[self.key_idxs[pk]].flat)
+
         if self.transform:
             return self.transform([*outputs],self.get_key_idxs(),self.test_phase)
         else:
@@ -120,9 +125,10 @@ class Kitti15Dataset(data.Dataset):
         gt_oc = y[keys['d0']].astype(float)
         fg_mask =y[keys['fgmap']]
 
+        headers = ['sample','nocc_fg_d1','nocc_all_d1','occ_fg_d1','occ_all_d1','runtime']
 
         if write_headers:
-            writer.writerow(['sample','nocc_fg_d1','nocc_all_d1','occ_fg_d1','occ_all_d1','runtime'])
+            writer.writerow(headers)
 
         nocc_fg_d1 = bad_n_error(3,
             X,

@@ -35,8 +35,20 @@ def bad_n_error(n, disp, gt, area : AreaSource = AreaSource.BOTH , fg_mask = Non
 
     all_err = np.greater( np.abs(disp_over_valid-gt_cp),n).astype(int)
     res = np.sum(all_err)/sum_gt
-        
     return res*100
+
+
+def disp_l1_loss(d,dt, max_disp):
+    mask = (dt < max_disp) & (dt > 0)
+    mask.detach_()
+    return F.smooth_l1_loss(d[mask],dt[mask])
+
+def two_disp_l1_loss(d0,d1,d0t,d1t,max_disp,a=0.5):
+    l0 = disp_l1_loss(d0,d0t,max_disp)
+    l1 = disp_l1_loss(d1,d1t,max_disp)
+
+    return (l0*a+l1*(1-a))
+
 
 def ST_loss(l0,r0,l1,r1,d0,d1,ofl,ofr,disc_map=None):
     """[summary]

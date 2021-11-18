@@ -4,4 +4,4 @@ dataset:kitti2015
 holdout:validation1
 training:['training']
 epoch:1
-all_args:Namespace(batch=3, dataset='kitti2015', epochs=800, file='splits.json', finetuning_resume=True, freeze_starting_with=None, learning_rate=0.001, method='STSEarlyFusionConcat', resume='reproductions/LEAStereo/run/Kitti15/best/best.pth', resume_method='LEAStereo', save='../weights/kitti15/STSEarlyFusionConcat_from_scratch', trainsplits=['training'], valsplit='validation1')
+all_args:Namespace(batch=3, dataset='kitti2015', epochs=800, file='splits.json', finetuning_resume=True, freeze_starting_with=None, learning_rate=0.001, method='STSEarlyFusionConcat', resume='reproductions/LEAStereo/run/sceneflow/best/checkpoint/best.pth', resume_method='LEAStereo', save='../weights/kitti15/STSEarlyFusionConcat_from_sceneflow', trainsplits=['training'], valsplit='validation1')

@@ -4,7 +4,7 @@ from time import time
 import numpy as np
 import torch
 from torch import optim
-from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner 
+from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner,STSEarlyFusionConcat2Runner,STSEarlyFusionConcat2BigRunner
 from datasets import Kitti15Dataset
 from args import PARSER_TRAIN
 from torch.utils.data import DataLoader
@@ -26,7 +26,9 @@ def get_splits(path):
 
 METHODS = {
     'LEAStereo': lambda args: LEASTereoRunner(args,training=True),
-    'STSEarlyFusionConcat': lambda args: STSEarlyFusionConcatRunner(args,training=True)
+    'STSEarlyFusionConcat': lambda args: STSEarlyFusionConcatRunner(args,training=True),
+    'STSEarlyFusionConcat2': lambda args: STSEarlyFusionConcat2Runner(args,training=True),
+    'STSEarlyFusionConcat2Big': lambda args: STSEarlyFusionConcat2BigRunner(args,training=True)
 }
 DATASETS = {
     'kitti2015': lambda *args: Kitti15Dataset(os.path.join(SCRIPT_DIR,'..','datasets','kitti2015'),*args)
@@ -95,7 +97,7 @@ if __name__ == "__main__":
         method.get_keys())
 
     resume_path = args.resume
-    model = method.get_model(resume_path)
+    model = method.get_model(resume_path, METHODS[args.resume_method](args).model_cls)
     model.eval()
 
     torch.backends.cudnn.benchmark = True
@@ -159,6 +161,7 @@ if __name__ == "__main__":
         f.write("holdout:" + str(args.valsplit) + '\n')
         f.write("training:" + str(args.trainsplits) + '\n')
         f.write("epoch:" + str(training_epoch_start) + '\n')
+        f.write("all_args:" + str(args) + '\n')
 
 
     for epoch in range(training_epoch_start, epochs + 1):

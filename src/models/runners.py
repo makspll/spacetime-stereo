@@ -6,7 +6,7 @@ from .augmentations.image_prep import kitti_transform
 import os 
 import torch 
 import sys
-from .metrics import bad_n_error, AreaSource
+from .metrics import bad_n_error, AreaSource, two_disp_l1_loss
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 REPRODS_PATH = os.path.join(SCRIPT_DIR,'..','reproductions')
@@ -44,7 +44,7 @@ class GenericRunner():
         if output_resolution[0] <= height and output_resolution[1]<= width:
             temp = temp[:, height - output_resolution[0]: height, width - output_resolution[1]: width]
 
-        temp = temp[0, :, :]
+        temp = temp[0,0, :, :]
         return {
             "runtime" : end_time - start_time,
             "outputs" : temp,
@@ -66,7 +66,8 @@ class GenericRunner():
             if os.path.isfile(weights_path):
                 print("=> loading checkpoint '{}'".format(weights_path))
                 checkpoint = torch.load(weights_path)
-                model.load_state_dict(model.module.convert_weights(checkpoint['state_dict'],weights_source), strict=True)      
+                converted = model.module.convert_weights(checkpoint['state_dict'],weights_source)
+                model.load_state_dict(converted, strict=False)      
             else:
                 print("=> no checkpoint found at '{}'".format(weights_path))
         return model
@@ -109,7 +110,6 @@ class GenericRunner():
                 sys.stdout.flush()
 
         print("===> Test: Avg. Accuracy: ({:.4f})".format(acc_all/valid_iteration))
-        print(type(acc_all),type(valid_iteration),type(epoch_loss))
         return (acc_all/valid_iteration, epoch_loss /valid_iteration)
 
 
@@ -209,12 +209,12 @@ class LEASTereoRunner(GenericRunner):
 
     def loss_accuracy_function(self, outputs, targets):
             target= targets[0]
-            output = outputs
+            output = torch.squeeze(outputs,1)
             mask = (target < self.maxdisp) & (target > 0)
             mask.detach_()
             valid_target_px = target[mask]
 
-            acc = 100 - bad_n_error(3,outputs.detach().cpu().numpy(),target.detach().cpu().numpy(),AreaSource.BOTH,max_disp=self.maxdisp)
+            acc = 100 - bad_n_error(3,output.detach().cpu().numpy(),target.detach().cpu().numpy(),AreaSource.BOTH,max_disp=self.maxdisp)
             if(valid_target_px.size()[0] <= 0):
                 return (0,acc)
             else:
@@ -228,9 +228,78 @@ class STSEarlyFusionConcatRunner(LEASTereoRunner):
         self.model_cls = STSEarlyFusionConcat
 
         if self.training:
+            self.keys = set(['l0','r0','l1','r1','d0'])
+        else:
+            self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index'])
+
+    def transform(self, inputs, keys, is_test_phase):
+
+        h,w,c = inputs[keys['l0']].shape[-3:]
+        new_height = self.crop_height
+        new_width = self.crop_width
+        random_crop = None
+        # left_right_rand = None
+        if self.training and not is_test_phase:
+            new_height = 168 #high_res 288 # low_res 168
+            new_width = 336 #high_res 576 # low_res 336
+            random_crop = (randint(0,w-new_width),
+                        randint(0,h-new_height))
+            # left_right_rand = randint(0,1) == 1
+
+
+        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['r0']] = kitti_transform(inputs[keys['r0']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['l1']] = kitti_transform(inputs[keys['l1']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['r1']] = kitti_transform(inputs[keys['r1']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['d0']] = kitti_transform(inputs[keys['d0']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+        
+        if not self.training:
+            inputs[keys['d0noc']] = kitti_transform(inputs[keys['d0noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+            inputs[keys['d1noc']] = kitti_transform(inputs[keys['d1noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+            inputs[keys['d1']] = kitti_transform(inputs[keys['d1']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+            inputs[keys['fgmap']] = kitti_transform(inputs[keys['fgmap']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+
+        return inputs 
+
+    def get_model_io_from_sample(self, sample, keys):
+        return [sample[keys['l0']],sample[keys['r0']],sample[keys['l1']],sample[keys['r1']]], [sample[keys['d0']]]
+
+    def get_model_io(self,batch):
+        return [torch.squeeze(batch[0],1),
+                torch.squeeze(batch[1],1),
+                torch.squeeze(batch[2],1),
+                torch.squeeze(batch[3],1)], [torch.squeeze(batch[4],1).float()]
+
+class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
+    def __init__(self,args, training=False) -> None:
+        from models.STSEarlyFusionConcat2 import STSEarlyFusionConcat2
+
+        super().__init__(args,training)
+        self.model_cls = STSEarlyFusionConcat2
+
+        if self.training:
             self.keys = set(['l0','r0','l1','r1','d0','d1'])
         else:
             self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index'])
+
+    def loss_accuracy_function(self, outputs, targets):
+            a = 0.75
+            d0 = outputs[:,0]
+            d1 = outputs[:,1]
+            acc = bad_n_error(3,d0.detach().cpu().numpy(),targets[0].detach().cpu().numpy(),AreaSource.BOTH,max_disp=self.maxdisp)
+            acc = 100 - acc 
+
+            return (two_disp_l1_loss(d0,d1,targets[0],targets[1],self.maxdisp,a=a),acc)
+
+    def get_model_io_from_sample(self, sample, keys):
+        return [sample[keys['l0']],sample[keys['r0']],sample[keys['l0']],sample[keys['r0']]], [sample[keys['d0']],sample[keys['d1']]]
+
+    def get_model_io(self,batch):
+        return [torch.squeeze(batch[0],1),
+                torch.squeeze(batch[1],1),
+                torch.squeeze(batch[2],1),
+                torch.squeeze(batch[3],1)], [torch.squeeze(batch[4],1).float(),
+                                            torch.squeeze(batch[5],1).float()]
 
     def transform(self, inputs, keys, is_test_phase):
 
@@ -262,26 +331,9 @@ class STSEarlyFusionConcatRunner(LEASTereoRunner):
 
         return inputs 
 
-    def get_model_io_from_sample(self, sample, keys):
-        return [sample[keys['l0']],sample[keys['r0']],sample[keys['l1']],sample[keys['r1']]], [sample[keys['d0']],sample[keys['d1']]]
+class STSEarlyFusionConcat2BigRunner(STSEarlyFusionConcat2Runner):
+    def __init__(self,args, training=False) -> None:
+        from models.STSEarlyFusionConcat2Big import STSEarlyFusionConcat2Big
 
-    def get_model_io(self,batch):
-        return [torch.squeeze(batch[0],1),
-                torch.squeeze(batch[1],1),
-                torch.squeeze(batch[2],1),
-                torch.squeeze(batch[3],1)], [torch.squeeze(batch[4],1).float(),
-                                            torch.squeeze(batch[5],1).float()]
-
-
-    # def loss_accuracy_function(self, outputs, targets):
-    #         target = targets[0]
-    #         output = outputs
-    #         mask = (target < self.maxdisp) & (target > 0)
-    #         mask.detach_()
-    #         valid_target_px = target[mask]
-
-    #         acc = 100 - bad_n_error(3,outputs.detach().cpu().numpy(),target.detach().cpu().numpy(),AreaSource.BOTH,max_disp=self.maxdisp)
-    #         if(valid_target_px.size()[0] <= 0):
-    #             return (0,acc)
-    #         else:
-    #             return (F.smooth_l1_loss(output[mask],valid_target_px),acc)
+        super().__init__(args,training)
+        self.model_cls = STSEarlyFusionConcat2Big

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class DisparityRegression(nn.Module):
     def __init__(self, max_disp):
         super(DisparityRegression, self).__init__()
@@ -24,7 +25,12 @@ class DisparitySelector(nn.Module):
 
     def forward(self, x):
         x = F.interpolate(x, [self.max_disp, x.size()[3]*3, x.size()[4]*3], mode='trilinear', align_corners=False)
-        x = torch.squeeze(x, 1)
-        x = self.softmax(x)      
-        x = self.disparity(x)
-        return x
+        b,disp_images,disps,h,w = x.size()
+
+        with torch.cuda.device_of(x):
+            out = x.new().resize_(b,disp_images,h,w)
+            for i in range(disp_images):
+                t = self.softmax(x[:,i])
+                t = self.disparity(t)
+                out[:,i] = t[:]
+        return out

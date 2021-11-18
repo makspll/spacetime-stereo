@@ -38,54 +38,56 @@ class LEAStereo(nn.Module):
     def convert_weights(self,state_dict,weights_source):
         new_state_dict = {}
 
-        if (weights_source is type(self)):
+        if (weights_source is LEAStereo):
+            print("===> converting from original LEAStereo weights")
+
+            # for actual LEAStereo weights 
+            replacings = {
+                # feature cells
+                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.0','\\1conv_prev_prev_to_zero',s), # 0 
+                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.1','\\1skip_prev_to_zero',s), # 1
+                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.2','\\1conv_prev_to_one',s), # 3
+                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.3','\\1conv_zero_to_one',s), # 4
+                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.4','\\1conv_prev_prev_to_two',s), # 5
+                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.5','\\1conv_one_to_two',s), # 8
+
+                # feature output
+                lambda s: re.sub(r'(feature\.)last_3','\\1conv_out',s),
+
+                # matching cells
+                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.0','\\1conv_prev_prev_to_zero',s), # 0 
+                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.1','\\1conv_prev_to_zero',s), # 1
+                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.2','\\1conv_prev_to_one',s), # 3
+                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.3','\\1conv_zero_to_one',s), # 4
+                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.4','\\1conv_prev_to_two',s), # 6
+                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.5','\\1conv_one_to_two',s), # 8
+                
+                # matching output
+                lambda s: re.sub(r'(matching\.)last_3','\\1conv_out',s),
+
+                # matching skips
+
+                lambda s: re.sub(r'(matching\.)conv1','\\1skips.0',s),
+                lambda s: re.sub(r'(matching\.)conv2','\\1skips.1',s),
+
+            }
+
+            filters = set(["module.feature.last_6.conv.weight", "module.feature.last_6.bn.weight", "module.feature.last_6.bn.bias", "module.feature.last_6.bn.running_mean", "module.feature.last_6.bn.running_var", "module.feature.last_6.bn.num_batches_tracked", "module.feature.last_12.conv.weight", "module.feature.last_12.bn.weight", "module.feature.last_12.bn.bias", "module.feature.last_12.bn.running_mean", "module.feature.last_12.bn.running_var", "module.feature.last_12.bn.num_batches_tracked", "module.feature.last_24.conv.weight", "module.feature.last_24.bn.weight", "module.feature.last_24.bn.bias", "module.feature.last_24.bn.running_mean", "module.feature.last_24.bn.running_var", "module.feature.last_24.bn.num_batches_tracked", "module.matching.last_12.conv.weight", "module.matching.last_12.bn.weight", "module.matching.last_12.bn.bias", "module.matching.last_12.bn.running_mean", "module.matching.last_12.bn.running_var", "module.matching.last_12.bn.num_batches_tracked", "module.matching.last_24.conv.weight", "module.matching.last_24.bn.weight", "module.matching.last_24.bn.bias", "module.matching.last_24.bn.running_mean", "module.matching.last_24.bn.running_var", "module.matching.last_24.bn.num_batches_tracked"])
+
+
+            for k in state_dict:
+                if k in filters:
+                    continue
+
+                n_k = k
+                for r in replacings:
+                    n_k = r(n_k)
+
+                new_state_dict[n_k] = state_dict[k]
+
+            return new_state_dict
+        else:
             return state_dict
-
-        # for actual LEAStereo weights 
-        replacings = {
-            # feature cells
-            lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.0','\\1conv_prev_prev_to_zero',s), # 0 
-            lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.1','\\1skip_prev_to_zero',s), # 1
-            lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.2','\\1conv_prev_to_one',s), # 3
-            lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.3','\\1conv_zero_to_one',s), # 4
-            lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.4','\\1conv_prev_prev_to_two',s), # 5
-            lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.5','\\1conv_one_to_two',s), # 8
-
-            # feature output
-            lambda s: re.sub(r'(feature\.)last_3','\\1conv_out',s),
-
-            # matching cells
-            lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.0','\\1conv_prev_prev_to_zero',s), # 0 
-            lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.1','\\1conv_prev_to_zero',s), # 1
-            lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.2','\\1conv_prev_to_one',s), # 3
-            lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.3','\\1conv_zero_to_one',s), # 4
-            lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.4','\\1conv_prev_to_two',s), # 6
-            lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.5','\\1conv_one_to_two',s), # 8
-            
-            # matching output
-            lambda s: re.sub(r'(matching\.)last_3','\\1conv_out',s),
-
-            # matching skips
-
-            lambda s: re.sub(r'(matching\.)conv1','\\1skips.0',s),
-            lambda s: re.sub(r'(matching\.)conv2','\\1skips.1',s),
-
-      }
-
-        filters = set(["module.feature.last_6.conv.weight", "module.feature.last_6.bn.weight", "module.feature.last_6.bn.bias", "module.feature.last_6.bn.running_mean", "module.feature.last_6.bn.running_var", "module.feature.last_6.bn.num_batches_tracked", "module.feature.last_12.conv.weight", "module.feature.last_12.bn.weight", "module.feature.last_12.bn.bias", "module.feature.last_12.bn.running_mean", "module.feature.last_12.bn.running_var", "module.feature.last_12.bn.num_batches_tracked", "module.feature.last_24.conv.weight", "module.feature.last_24.bn.weight", "module.feature.last_24.bn.bias", "module.feature.last_24.bn.running_mean", "module.feature.last_24.bn.running_var", "module.feature.last_24.bn.num_batches_tracked", "module.matching.last_12.conv.weight", "module.matching.last_12.bn.weight", "module.matching.last_12.bn.bias", "module.matching.last_12.bn.running_mean", "module.matching.last_12.bn.running_var", "module.matching.last_12.bn.num_batches_tracked", "module.matching.last_24.conv.weight", "module.matching.last_24.bn.weight", "module.matching.last_24.bn.bias", "module.matching.last_24.bn.running_mean", "module.matching.last_24.bn.running_var", "module.matching.last_24.bn.num_batches_tracked"])
-
-    
-        for k in state_dict:
-            if k in filters:
-                continue
-
-            n_k = k
-            for r in replacings:
-                n_k = r(n_k)
-
-            new_state_dict[n_k] = state_dict[k]
-
-        return new_state_dict
 
 class MatchingNetwork(nn.Module):
     def __init__(self,
@@ -98,7 +100,6 @@ class MatchingNetwork(nn.Module):
         super().__init__()
 
         assert(resolution_levels[-1] == 1 and resolution_levels[0] == 1)
-
         self.cells = nn.ModuleList()
         in_disparities=in_channels
     
@@ -108,7 +109,6 @@ class MatchingNetwork(nn.Module):
 
         for c_params in cell_params_iterator(in_disparities//2,resolution_levels,resolution_level_to_disparities):
             self.cells.append(Matching.MatchingCell(**c_params))
-
         features_last_layer = resolution_level_to_disparities[resolution_levels[-1]]*4
 
         self.conv_out  = Ops.ConvBR(features_last_layer//2, out_channels, 3, stride=1, padding=1,  bn=False, relu=False, dim=3)  
@@ -157,7 +157,6 @@ class MatchingNetwork(nn.Module):
         mat = self.last_6(last_output)
         mat = upsample_6(mat)
         mat = self.conv_out(mat)
-
         return mat  
 
 

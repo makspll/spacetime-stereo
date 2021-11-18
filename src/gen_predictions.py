@@ -4,7 +4,7 @@ import numpy as np
 from skimage.io import imsave 
 import csv
 import torch
-from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner 
+from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner , STSEarlyFusionConcat2Runner, STSEarlyFusionConcat2BigRunner
 from datasets import Kitti15Dataset
 from args import PARSER
 torch.manual_seed(0)
@@ -22,7 +22,10 @@ def get_splits(path):
 
 METHODS = {
     'LEAStereo': lambda args: LEASTereoRunner(args,training=False),
-    'STSEarlyFusionConcat' : lambda args: STSEarlyFusionConcatRunner(args, training=False)
+    'STSEarlyFusionConcat' : lambda args: STSEarlyFusionConcatRunner(args, training=False),
+    'STSEarlyFusionConcat2' : lambda args: STSEarlyFusionConcat2Runner(args, training=False),
+    'STSEarlyFusionConcat2Big' : lambda args: STSEarlyFusionConcat2BigRunner(args, training=False)
+
 }
 DATASETS = {
     'kitti2015': lambda *args: Kitti15Dataset(os.path.join(SCRIPT_DIR,'..','datasets','kitti2015'),*args)
@@ -41,7 +44,8 @@ if __name__ == "__main__":
         indices,
         method.transform,
         True, # test phase
-        method.get_keys())
+        method.get_keys(),
+        args.permute_keys)
     model = method.get_model(args.resume,resume_method.model_cls)
     model.eval()
 
