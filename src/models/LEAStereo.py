@@ -5,6 +5,9 @@ from .blocks import Feature,Matching,Disparity,Ops
 from .blocks import cell_params_iterator
 import re
 
+class LEASTereoOrigMock():
+    pass
+
 class LEAStereo(nn.Module):
     def __init__(self, max_disp=192):
         super().__init__()
@@ -35,59 +38,7 @@ class LEAStereo(nn.Module):
         disp = self.disp(cost)    
         return disp
     
-    def convert_weights(self,state_dict,weights_source):
-        new_state_dict = {}
-
-        if (weights_source is LEAStereo):
-            print("===> converting from original LEAStereo weights")
-
-            # for actual LEAStereo weights 
-            replacings = {
-                # feature cells
-                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.0','\\1conv_prev_prev_to_zero',s), # 0 
-                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.1','\\1skip_prev_to_zero',s), # 1
-                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.2','\\1conv_prev_to_one',s), # 3
-                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.3','\\1conv_zero_to_one',s), # 4
-                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.4','\\1conv_prev_prev_to_two',s), # 5
-                lambda s: re.sub(r'(feature\.cells\..+\.)_ops\.5','\\1conv_one_to_two',s), # 8
-
-                # feature output
-                lambda s: re.sub(r'(feature\.)last_3','\\1conv_out',s),
-
-                # matching cells
-                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.0','\\1conv_prev_prev_to_zero',s), # 0 
-                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.1','\\1conv_prev_to_zero',s), # 1
-                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.2','\\1conv_prev_to_one',s), # 3
-                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.3','\\1conv_zero_to_one',s), # 4
-                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.4','\\1conv_prev_to_two',s), # 6
-                lambda s: re.sub(r'(matching\.cells\..+\.)_ops\.5','\\1conv_one_to_two',s), # 8
-                
-                # matching output
-                lambda s: re.sub(r'(matching\.)last_3','\\1conv_out',s),
-
-                # matching skips
-
-                lambda s: re.sub(r'(matching\.)conv1','\\1skips.0',s),
-                lambda s: re.sub(r'(matching\.)conv2','\\1skips.1',s),
-
-            }
-
-            filters = set(["module.feature.last_6.conv.weight", "module.feature.last_6.bn.weight", "module.feature.last_6.bn.bias", "module.feature.last_6.bn.running_mean", "module.feature.last_6.bn.running_var", "module.feature.last_6.bn.num_batches_tracked", "module.feature.last_12.conv.weight", "module.feature.last_12.bn.weight", "module.feature.last_12.bn.bias", "module.feature.last_12.bn.running_mean", "module.feature.last_12.bn.running_var", "module.feature.last_12.bn.num_batches_tracked", "module.feature.last_24.conv.weight", "module.feature.last_24.bn.weight", "module.feature.last_24.bn.bias", "module.feature.last_24.bn.running_mean", "module.feature.last_24.bn.running_var", "module.feature.last_24.bn.num_batches_tracked", "module.matching.last_12.conv.weight", "module.matching.last_12.bn.weight", "module.matching.last_12.bn.bias", "module.matching.last_12.bn.running_mean", "module.matching.last_12.bn.running_var", "module.matching.last_12.bn.num_batches_tracked", "module.matching.last_24.conv.weight", "module.matching.last_24.bn.weight", "module.matching.last_24.bn.bias", "module.matching.last_24.bn.running_mean", "module.matching.last_24.bn.running_var", "module.matching.last_24.bn.num_batches_tracked"])
-
-
-            for k in state_dict:
-                if k in filters:
-                    continue
-
-                n_k = k
-                for r in replacings:
-                    n_k = r(n_k)
-
-                new_state_dict[n_k] = state_dict[k]
-
-            return new_state_dict
-        else:
-            return state_dict
+    
 
 class MatchingNetwork(nn.Module):
     def __init__(self,
@@ -95,24 +46,29 @@ class MatchingNetwork(nn.Module):
             out_channels=1,
             resolution_levels=[1,1,2,2,1,2,2,2,1,1,0,1], 
             resolution_level_to_disparities={0: 8,1: 16, 2: 32, 3: 64},
-            skip_connections=[0,4,0,0,8,0,0,0,0,0,0,0]):     
+            skip_connections=[0,4,0,0,8,0,0,0,0,0,0,0],
+            dim=3,
+            kernel_size=3,):     
 
         super().__init__()
+
+        self.dim = dim 
 
         assert(resolution_levels[-1] == 1 and resolution_levels[0] == 1)
         self.cells = nn.ModuleList()
         in_disparities=in_channels
-    
-        self.stem0 = Ops.ConvBR(in_disparities, in_disparities//2, 3, stride=1, padding=1, dim=3)
-        self.stem1 = Ops.ConvBR(in_disparities//2, in_disparities//2, 3, stride=1, padding=1, dim=3)
+        same_padding = (kernel_size - 1) // 2
+
+        self.stem0 = Ops.ConvBR(in_disparities, in_disparities//2, kernel_size, stride=1, padding=same_padding, dim=dim)
+        self.stem1 = Ops.ConvBR(in_disparities//2, in_disparities//2, kernel_size, stride=1, padding=same_padding, dim=dim)
         self.skip_connections = skip_connections
 
-        for c_params in cell_params_iterator(in_disparities//2,resolution_levels,resolution_level_to_disparities):
+        for c_params in cell_params_iterator(in_disparities//2,resolution_levels,resolution_level_to_disparities,dim=dim,kernel_size=kernel_size):
             self.cells.append(Matching.MatchingCell(**c_params))
         features_last_layer = resolution_level_to_disparities[resolution_levels[-1]]*4
 
-        self.conv_out  = Ops.ConvBR(features_last_layer//2, out_channels, 3, stride=1, padding=1,  bn=False, relu=False, dim=3)  
-        self.last_6  = Ops.ConvBR(features_last_layer , features_last_layer//2, 1, stride=1, padding=0,dim=3)  
+        self.conv_out  = Ops.ConvBR(features_last_layer//2, out_channels, kernel_size, stride=1, padding=same_padding,  bn=False, relu=False, dim=dim)  
+        self.last_6  = Ops.ConvBR(features_last_layer , features_last_layer//2, 1, stride=1, padding=0,dim=dim)  
 
 
         self.skips = nn.ModuleList()
@@ -125,9 +81,20 @@ class MatchingNetwork(nn.Module):
             source_disparities = resolution_level_to_disparities[resolution_levels[s]]
             target_disparities = resolution_level_to_disparities[resolution_levels[t]]
             self.skips.append(
-                Ops.ConvBR((source_disparities+target_disparities)*4, (source_disparities+target_disparities)*2, 3, stride=1, padding=1, dim=3)
+                Ops.ConvBR((source_disparities+target_disparities)*4, (source_disparities+target_disparities)*2, kernel_size, stride=1, padding=same_padding, dim=dim)
                 )
 
+    def upsample_to_size(self,t,target_size,**kwargs):
+        if self.dim == 4:
+            out = t.new().resize_(
+                t.shape[0],t.shape[1],t.shape[2],target_size[0],target_size[1],target_size[2]
+            )
+            for time in range(t.shape[1]):
+                out[:,time] = F.upsample(t[:,time],target_size,**kwargs)
+            t = out 
+        else:
+            t = F.upsample(t,target_size,**kwargs)
+        return t 
 
     def forward(self, x):
         stem0 = self.stem0(x)
@@ -138,7 +105,6 @@ class MatchingNetwork(nn.Module):
         skip_buffer = [None]*len(self.skip_connections)
         skips_count = 0
         for i,c in enumerate(self.cells):
-
             out = c(out[0],out[1])
             if self.skip_connections[i] != 0:
                 skip_buffer[self.skip_connections[i]] = (skips_count,out[1])
@@ -152,10 +118,9 @@ class MatchingNetwork(nn.Module):
 
         last_output = out[-1]
 
-        upsample_6  = nn.Upsample(size=x.size()[2:], mode='trilinear', align_corners=True)
-
+          
         mat = self.last_6(last_output)
-        mat = upsample_6(mat)
+        mat = self.upsample_to_size(mat,x.shape[-3:],mode='trilinear',align_corners=True)
         mat = self.conv_out(mat)
         return mat  
 

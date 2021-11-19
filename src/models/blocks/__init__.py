@@ -2,7 +2,7 @@
 def scale_dimension(dim,scale):
     return (int((float(dim) - 1.0) * scale + 1.0) if dim % 2 == 1 else int((float(dim) * scale)))
 
-def cell_params_iterator(input_features,resolution_levels,resolution_level_to_features):
+def cell_params_iterator(input_features,resolution_levels,resolution_level_to_features,**kwargs):
     for i,curr_level in enumerate(resolution_levels):
         
         prev_level = resolution_levels[i - 1] if i > 0 else 0
@@ -34,5 +34,6 @@ def cell_params_iterator(input_features,resolution_levels,resolution_level_to_fe
             'c_in_prev_prev': features_prev_prev,
             'c_in_prev': features_prev,
             'c_out': features_to_next,
-            'scale': scale
+            'scale': scale,
+            **kwargs
         })

@@ -2,11 +2,13 @@ from random import randint
 import time
 import torch.nn.functional as F
 from torch.autograd.variable import Variable
+
 from .augmentations.image_prep import kitti_transform
 import os 
 import torch 
 import sys
 from .metrics import bad_n_error, AreaSource, two_disp_l1_loss
+from .convert_weights import convert_weights
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 REPRODS_PATH = os.path.join(SCRIPT_DIR,'..','reproductions')
@@ -66,7 +68,8 @@ class GenericRunner():
             if os.path.isfile(weights_path):
                 print("=> loading checkpoint '{}'".format(weights_path))
                 checkpoint = torch.load(weights_path)
-                converted = model.module.convert_weights(checkpoint['state_dict'],weights_source)
+                
+                converted = convert_weights(checkpoint['state_dict'],weights_source,self.model_cls)
                 model.load_state_dict(converted, strict=False)      
             else:
                 print("=> no checkpoint found at '{}'".format(weights_path))
@@ -292,7 +295,7 @@ class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
             return (two_disp_l1_loss(d0,d1,targets[0],targets[1],self.maxdisp,a=a),acc)
 
     def get_model_io_from_sample(self, sample, keys):
-        return [sample[keys['l0']],sample[keys['r0']],sample[keys['l0']],sample[keys['r0']]], [sample[keys['d0']],sample[keys['d1']]]
+        return [sample[keys['l0']],sample[keys['r0']],sample[keys['l1']],sample[keys['r1']]], [sample[keys['d0']],sample[keys['d1']]]
 
     def get_model_io(self,batch):
         return [torch.squeeze(batch[0],1),
@@ -337,3 +340,16 @@ class STSEarlyFusionConcat2BigRunner(STSEarlyFusionConcat2Runner):
 
         super().__init__(args,training)
         self.model_cls = STSEarlyFusionConcat2Big
+
+class STSEarlyFusionTimeMatchRunner(STSEarlyFusionConcat2Runner):
+    def __init__(self, args, training=False) -> None:
+        from models.STSEarlyFusionTimeMatch import STSEarlyFusionTimeMatch
+
+        super().__init__(args, training=training)
+        self.model_cls = STSEarlyFusionTimeMatch
+
+class LEAStereoOrigMockRunner(GenericRunner):
+    def __init__(self, args, training = False):
+        from models.LEAStereo import LEASTereoOrigMock
+        super().__init__(args,training)
+        self.model_cls = LEASTereoOrigMock
