@@ -4,6 +4,7 @@ import os
 PARSER = argparse.ArgumentParser(description='Run given network on the given split and store outpus + running times')
 
 PARSER.add_argument('file', default='splits.json')
+PARSER.add_argument('datasets_dir', help="directory containing root folders of each dataset")
 PARSER.add_argument('--resume','-r', default='reproductions/LEAStereo/run/Kitti15/best/best.pth')
 PARSER.add_argument('--resume_method', '-rs', default="LEAStereo")
 PARSER.add_argument('--outdir','-o', default=os.path.join('..','predictions'))
@@ -16,6 +17,7 @@ PARSER.add_argument('--permute_keys', '-sk',nargs="+",default=[], help="permute 
 PARSER_TRAIN = argparse.ArgumentParser(description='Run given network on the given split and store outpus + running times')
 
 PARSER_TRAIN.add_argument('file')
+PARSER_TRAIN.add_argument('datasets_dir', help="directory containing root folders of each dataset")
 PARSER_TRAIN.add_argument('save', help="path to overwrite/save new weights to")
 PARSER_TRAIN.add_argument('valsplit',help="hold out split name")
 PARSER_TRAIN.add_argument('trainsplits',nargs="+", help="split names to be used for training")

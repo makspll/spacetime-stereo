@@ -1,7 +1,7 @@
-{'lr': 0.001, 'betas': (0.9, 0.999), 'eps': 1e-08, 'weight_decay': 0, 'amsgrad': False, 'initial_lr': 0.001}
-{'milestones': Counter({30: 1, 50: 1, 300: 1}), 'gamma': 0.5, 'base_lrs': [0.001], 'last_epoch': 0, '_step_count': 1, '_get_lr_called_within_step': False, '_last_lr': [0.001]}
+{'lr': 0.00025, 'betas': (0.9, 0.999), 'eps': 1e-08, 'weight_decay': 0, 'amsgrad': False, 'initial_lr': 0.001}
+{'milestones': Counter({30: 1, 50: 1, 300: 1}), 'gamma': 0.5, 'base_lrs': [0.001], 'last_epoch': 254, '_step_count': 255, '_get_lr_called_within_step': False, '_last_lr': [0.00025]}
 dataset:kitti2015
 holdout:validation1
 training:['training']
-epoch:1
-all_args:Namespace(batch=2, dataset='kitti2015', epochs=800, file='splits.json', finetuning_resume=True, freeze_starting_with=None, learning_rate=0.001, method='STSEarlyFusionTimeMatch', resume='reproductions/LEAStereo/run/sceneflow/best/checkpoint/best.pth', resume_method='LEAStereoOrig', save='../weights/kitti15/STSEarlyFusionTimeMatch', trainsplits=['training'], valsplit='validation1')
+epoch:256
+all_args:Namespace(batch=2, dataset='kitti2015', epochs=800, file='splits.json', finetuning_resume=False, freeze_starting_with=None, learning_rate=0.001, method='STSEarlyFusionTimeMatch', resume='../weights/kitti15/STSEarlyFusionTimeMatch/epoch_255.pth', resume_method='STSEarlyFusionTimeMatch', save='../weights/kitti15/STSEarlyFusionTimeMatch', trainsplits=['training'], valsplit='validation1')

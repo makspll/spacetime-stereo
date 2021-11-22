@@ -33,7 +33,7 @@ METHODS = {
     'STSEarlyFusionTimeMatch': lambda args: STSEarlyFusionTimeMatchRunner(args,training=True)
 }
 DATASETS = {
-    'kitti2015': lambda *args: Kitti15Dataset(os.path.join(SCRIPT_DIR,'..','datasets','kitti2015'),*args)
+    'kitti2015': lambda *args: Kitti15Dataset(*args)
 }
 
 
@@ -84,6 +84,7 @@ if __name__ == "__main__":
     indices_val = splits[args.dataset][args.method]["training"][args.valsplit]
 
     dataset_val = DATASETS[args.dataset](
+        args.datasets_dir,
         True, 
         indices_val,
         method.transform,
@@ -92,6 +93,7 @@ if __name__ == "__main__":
 
     indices_train = [splits[args.dataset][args.method]["training"][x] for x in args.trainsplits]
     dataset_train = DATASETS[args.dataset](
+        args.datasets_dir,
         True, 
         [item for sublist in indices_train for item in sublist], # flatten 
         method.transform,
@@ -136,7 +138,7 @@ if __name__ == "__main__":
             if not checkpoint.get('accuracies_val', None):
                 epoch_start = int(checkpoint['epoch'])
             else:
-                training_epoch_start = int(checkpoint['epoch'])
+                training_epoch_start = int(checkpoint['epoch']) + 1
                 accuracies_train = checkpoint['accuracies_train']
                 losses_train = checkpoint['losses_train']
                 accuracies_val = checkpoint['accuracies_val']

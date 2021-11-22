@@ -39,7 +39,7 @@ class Kitti15Dataset(data.Dataset):
         directory = 'training'
         if not self.training:
             directory = 'testing'
-        directory = os.path.join(self.abspath,directory)
+        directory = os.path.join(self.abspath,"kitti2015",directory)
 
         if self.indices:
             i = self.indices[i]
