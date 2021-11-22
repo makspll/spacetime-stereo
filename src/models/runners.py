@@ -56,7 +56,6 @@ class GenericRunner():
         }
 
     def get_model(self, weights_path, weights_source):
-        torch.backends.cudnn.benchmark = True
 
         cuda = self.device == 'cuda'
         if cuda and not torch.cuda.is_available():
