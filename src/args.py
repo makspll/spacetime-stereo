@@ -32,3 +32,4 @@ PARSER_TRAIN.add_argument('--finetuning_resume', '-fr', default=True, action="st
 PARSER_TRAIN.add_argument('--freeze-starting-with', '-f', default=None ,help="freeze submodules who start with this string (None)")
 PARSER_TRAIN.add_argument('--crop_width', '-cw', default=336 ,help="the size of the random crop applied to the input image during training")
 PARSER_TRAIN.add_argument('--crop_height', '-ch', default=168 ,help="the size of the random crop applied to the input image during training")
+PARSER_TRAIN.add_argument('--local_rank', '-loc_r',type=int,default=-1 ,help="the uniue id of the process (0 = master), decides which GPU is used")

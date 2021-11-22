@@ -10,11 +10,14 @@ from args import PARSER_TRAIN
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, MaxNLocator
+from torch.utils.data.distributed import DistributedSampler
 
 torch.manual_seed(0)
 import random
 random.seed(0)
 np.random.seed(0)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -73,7 +76,16 @@ def make_plot(path, epoch, accuracies_train, losses_train, accuracies_val, losse
 
 if __name__ == "__main__":
 
+    
     args = PARSER_TRAIN.parse_args()
+    print(torch.cuda.device_count(),args.local_rank)
+    import os 
+    print(os.getenv("RANK","none"),os.getenv("LOCAL_RANK","none"))
+
+    if args.local_rank != -1:
+        torch.distributed.init_process_group(backend='nccl',init_method='env://')
+        torch.cuda.set_device(args.local_rank)
+
     print(f"===> Building model with parameters: \n{args}\n")
 
     splits = get_splits(args.file)
@@ -104,15 +116,20 @@ if __name__ == "__main__":
     model = method.get_model(resume_path, METHODS[args.resume_method](args).model_cls)
     model.eval()
 
-    torch.backends.cudnn.benchmark = True
-
     out_path = os.path.join(SCRIPT_DIR,args.save)
 
     if not os.path.exists(out_path):
         os.makedirs(out_path)
 
-    train_loader = DataLoader(dataset_train, batch_size, shuffle=True,pin_memory=True)
-    val_loader = DataLoader(dataset_val, 1, shuffle=False, pin_memory=True)
+    if args.local_rank != -1:
+        sampler_train = DistributedSampler(dataset_train)
+        sampler_val = DistributedSampler(dataset_val)
+    else:
+        sampler_train = None 
+        sampler_val = None 
+        
+    train_loader = DataLoader(dataset_train, batch_size, shuffle=True,pin_memory=True,sampler=sampler_train)
+    val_loader = DataLoader(dataset_val, 1, shuffle=False, pin_memory=True, sampler=sampler_val)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, betas=(0.9,0.999))
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30,50,300], gamma=0.5)

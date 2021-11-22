@@ -2,6 +2,7 @@ from random import randint
 import time
 import torch.nn.functional as F
 from torch.autograd.variable import Variable
+from torch.nn.parallel.data_parallel import DataParallel
 
 from .augmentations.image_prep import kitti_transform
 import os 
@@ -9,6 +10,7 @@ import torch
 import sys
 from .metrics import bad_n_error, AreaSource, two_disp_l1_loss
 from .convert_weights import convert_weights
+from torch.nn.parallel import DistributedDataParallel
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 REPRODS_PATH = os.path.join(SCRIPT_DIR,'..','reproductions')
@@ -22,10 +24,11 @@ class GenericRunner():
     def __init__(self, model_cls, args, training=False) -> None:
         self.keys = set()
         self.model_cls = model_cls
+        self.args = args 
 
     def get_keys(self):
         return self.keys
-    
+
     def get_output(self, model, sample, keys):
 
         inputs,targets = self.get_model_io_from_sample(sample, keys)
@@ -62,8 +65,13 @@ class GenericRunner():
         model = self.model_cls()
 
         if cuda:
-            model = torch.nn.DataParallel(model).cuda()
-        
+            if self.args.local_rank != -1:
+                model = DistributedDataParallel(model.cuda(),
+                    device_ids=[self.args.local_rank],
+                    output_device=[self.args.local_rank])
+            else:
+                model = DataParallel(model).cuda()
+                
         if weights_path: #opt.resume:
             if os.path.isfile(weights_path):
                 print("=> loading checkpoint '{}'".format(weights_path))
@@ -160,7 +168,6 @@ class LEASTereoRunner(GenericRunner):
         from models.LEAStereo import LEAStereo
 
         super().__init__(LEAStereo,args,training)
-        self.args = args
         
         dataset = args.dataset
 
