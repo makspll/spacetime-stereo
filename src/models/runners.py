@@ -118,10 +118,9 @@ class GenericRunner():
                 acc_all += acc
                 valid_iteration += 1
 
-                print("===> Test({}/{}): Accuracy: ({:.4f})".format(iteration, len(loader), acc))
                 sys.stdout.flush()
 
-        print("===> Test: Avg. Accuracy: ({:.4f})".format(acc_all/valid_iteration))
+        print("===> Test: Avg. Accuracy: ({})({:.4f})".format(self.args.local_rank,acc_all/valid_iteration))
         return (acc_all/valid_iteration, epoch_loss /valid_iteration)
 
 
@@ -139,7 +138,6 @@ class GenericRunner():
                 inputs = [x.cuda() for x in inputs]
                 targets = [x.cuda() for x in targets]
 
-            train_start_time = time.time()
             model.train()
     
             optimizer.zero_grad()
@@ -152,15 +150,10 @@ class GenericRunner():
                 valid_iteration += 1
                 optimizer.step()
                 acc_all += acc
-                train_end_time = time.time()
-                train_time = train_end_time - train_start_time
-                print("===> Epoch[{}({})]({}/{}): Loss: ({:.4f}), Acc.: ({:.4f}) Time: ({:.2f}s)".format(epoch, self.args.local_rank,iteration, len(loader), loss.item(),acc,train_time))
-            else:
-                print(f"===> Epoch[{epoch}]: Skipped " )
 
             sys.stdout.flush()
                                     
-        print("===> Epoch {} Complete: Avg. Loss: ({:.4f}), Avg. Acc.: ({:.4f})".format(epoch, epoch_loss / valid_iteration, acc_all/ valid_iteration))
+        print("===> Epoch {}({}) Complete: Avg. Loss: ({:.4f}), Avg. Acc.: ({:.4f})".format(epoch,self.args.local_rank, epoch_loss / valid_iteration, acc_all/ valid_iteration))
         return (acc_all / valid_iteration, (epoch_loss/ valid_iteration))
 
 class LEASTereoRunner(GenericRunner):

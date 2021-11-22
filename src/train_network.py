@@ -145,7 +145,8 @@ if __name__ == "__main__":
     epoch_start = 1
     training_epoch_start = 1
     if not args.finetuning_resume:
-        checkpoint = torch.load(resume_path)
+        map_location = {'cuda:%d' % 0: 'cuda:%d' % torch.distributed.get_rank()}
+        checkpoint = torch.load(resume_path, map_location=map_location)
         try:
             optimizer.load_state_dict(checkpoint['optimizer'])
         except:
@@ -192,25 +193,41 @@ if __name__ == "__main__":
         start = time()
         acc_t,loss_t=method.train(epoch,model,train_loader, optimizer)
         acc_v,loss_v=method.validate(model,val_loader)
-        
-        accuracies_train.append(acc_t/100)
-        losses_train.append(loss_t)
-        accuracies_val.append(acc_v/100)
-        losses_val.append(loss_v)
+        acc_t = torch.Tensor([acc_t]).cuda()
+        acc_v = torch.Tensor([acc_v]).cuda()
+        loss_t = torch.Tensor([loss_t]).cuda()
+        loss_v = torch.Tensor([loss_v]).cuda()
 
-        best = False
-        if acc_v > best_acc:
-            best_acc = acc_v
-            best = True
-        
-        if epoch % save_every == 0 or best:
-            save_architecture(out_path, epoch, model, optimizer, scheduler, best, 
-                losses_train = losses_train,
-                accuracies_val = accuracies_val,
-                losses_val = losses_val,
-                accuracies_train = accuracies_train)
-        make_plot(out_path, epoch, accuracies_train, losses_train, accuracies_val, losses_val, start_epoch = epoch_start)
-        
+        torch.distributed.reduce(acc_t,0) 
+        torch.distributed.reduce(acc_v,0)
+        torch.distributed.reduce(loss_t,0)
+        torch.distributed.reduce(loss_v,0)
+
+
+        if torch.distributed.get_rank() == 0:
+            acc_t /= torch.distributed.get_world_size()
+            acc_v /= torch.distributed.get_world_size()
+            loss_t /= torch.distributed.get_world_size()
+            loss_v /= torch.distributed.get_world_size()
+
+            accuracies_train.append(acc_t.cpu().numpy()/100)
+            losses_train.append(loss_t.cpu().numpy())
+            accuracies_val.append(acc_v.cpu().numpy()/100)
+            losses_val.append(loss_v.cpu().numpy())
+
+            best = False
+            if acc_v > best_acc:
+                best_acc = acc_v
+                best = True
+            
+            if (epoch % save_every == 0 or best):
+                save_architecture(out_path, epoch, model, optimizer, scheduler, best, 
+                    losses_train = losses_train,
+                    accuracies_val = accuracies_val,
+                    losses_val = losses_val,
+                    accuracies_train = accuracies_train)
+            make_plot(out_path, epoch, accuracies_train, losses_train, accuracies_val, losses_val, start_epoch = epoch_start)
+            
         scheduler.step()
 
         end = time()
