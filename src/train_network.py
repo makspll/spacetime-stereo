@@ -198,17 +198,20 @@ if __name__ == "__main__":
         loss_t = torch.Tensor([loss_t]).cuda()
         loss_v = torch.Tensor([loss_v]).cuda()
 
-        torch.distributed.reduce(acc_t,0) 
-        torch.distributed.reduce(acc_v,0)
-        torch.distributed.reduce(loss_t,0)
-        torch.distributed.reduce(loss_v,0)
+
+        if args.local_rank != -1:
+            torch.distributed.reduce(acc_t,0) 
+            torch.distributed.reduce(acc_v,0)
+            torch.distributed.reduce(loss_t,0)
+            torch.distributed.reduce(loss_v,0)
 
 
-        if torch.distributed.get_rank() == 0:
-            acc_t /= torch.distributed.get_world_size()
-            acc_v /= torch.distributed.get_world_size()
-            loss_t /= torch.distributed.get_world_size()
-            loss_v /= torch.distributed.get_world_size()
+        if args.local_rank == -1 or torch.distributed.get_rank() == 0:
+            if args.local_rank == -1:
+                acc_t /= torch.distributed.get_world_size()
+                acc_v /= torch.distributed.get_world_size()
+                loss_t /= torch.distributed.get_world_size()
+                loss_v /= torch.distributed.get_world_size()
 
             accuracies_train.append(acc_t.cpu().numpy()/100)
             losses_train.append(loss_t.cpu().numpy())
