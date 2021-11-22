@@ -81,7 +81,7 @@ if __name__ == "__main__":
     import os 
     print(f'Rank:{os.getenv("RANK","none")}'
             + f'Local Rank:{os.getenv("LOCAL_RANK","none")}'
-            + f'GPUs:{torch.cuda.device_count()}')
+            + f'GPUs:{torch.cuda.device_count()}[{os.getenv("CUDA_VISIBLE_DEVICES","")}]')
 
     if args.local_rank != -1:
         torch.distributed.init_process_group(backend='nccl',init_method='env://')
@@ -196,18 +196,14 @@ if __name__ == "__main__":
         acc_t = torch.Tensor([acc_t]).cuda()
         acc_v = torch.Tensor([acc_v]).cuda()
         loss_t = torch.Tensor([loss_t]).cuda()
-        loss_v = torch.Tensor([loss_v]).cuda()
-
-
-        if args.local_rank != -1:
-            torch.distributed.reduce(acc_t,0) 
+        loss_v = torch.Tensor([loss_v]).cuda()PUs:8
             torch.distributed.reduce(acc_v,0)
             torch.distributed.reduce(loss_t,0)
             torch.distributed.reduce(loss_v,0)
 
 
         if args.local_rank == -1 or torch.distributed.get_rank() == 0:
-            if args.local_rank == -1:
+            if args.local_rank != -1:
                 acc_t /= torch.distributed.get_world_size()
                 acc_v /= torch.distributed.get_world_size()
                 loss_t /= torch.distributed.get_world_size()
