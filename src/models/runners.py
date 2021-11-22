@@ -163,30 +163,35 @@ class LEASTereoRunner(GenericRunner):
         self.args = args
         
         dataset = args.dataset
-        self.crop_width = 1248
-        self.crop_height = 384 
+
+        self.crop_width = int(args.crop_width)
+        self.crop_height = int(args.crop_height)
+        self.crop_width_out = 1248
+        self.crop_height_out = 384 
         self.device = 'cuda'
         self.maxdisp = 192
         self.training = training 
         self.last_crop = None
         if dataset == 'sceneflow':
-            self.crop_width = 960
-            self.crop_height = 576
+            self.crop_width_out = 960
+            self.crop_height_out = 576
         if self.training:
             self.keys = set(['l0','r0','d0'])
         else:
             self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index'])
-    
+        assert(self.crop_width <= self.crop_width_out)
+        assert(self.crop_height <= self.crop_height_out)
+
     def transform(self, inputs, keys, is_test_phase):
 
         h,w,c = inputs[keys['l0']].shape[-3:]
-        new_height = self.crop_height
-        new_width = self.crop_width
+        new_height = self.crop_height_out
+        new_width = self.crop_width_out
         random_crop = None
         # left_right_rand = None
         if self.training and not is_test_phase:
-            new_height = 168 #high_res 288 # low_res 168
-            new_width = 336 #high_res 576 # low_res 336
+            new_height = self.crop_height #high_res 288 # low_res 168
+            new_width = self.crop_width #high_res 576 # low_res 336
             random_crop = (randint(0,w-new_width),
                         randint(0,h-new_height))
             # left_right_rand = randint(0,1) == 1
@@ -238,13 +243,13 @@ class STSEarlyFusionConcatRunner(LEASTereoRunner):
     def transform(self, inputs, keys, is_test_phase):
 
         h,w,c = inputs[keys['l0']].shape[-3:]
-        new_height = self.crop_height
-        new_width = self.crop_width
+        new_height = self.crop_height_out
+        new_width = self.crop_width_out
         random_crop = None
         # left_right_rand = None
         if self.training and not is_test_phase:
-            new_height = 168 #high_res 288 # low_res 168
-            new_width = 336 #high_res 576 # low_res 336
+            new_height = self.crop_height #high_res 288 # low_res 168
+            new_width = self.crop_width #high_res 576 # low_res 336
             random_crop = (randint(0,w-new_width),
                         randint(0,h-new_height))
             # left_right_rand = randint(0,1) == 1
@@ -307,13 +312,13 @@ class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
     def transform(self, inputs, keys, is_test_phase):
 
         h,w,c = inputs[keys['l0']].shape[-3:]
-        new_height = self.crop_height
-        new_width = self.crop_width
+        new_height = self.crop_height_out
+        new_width = self.crop_width_out
         random_crop = None
         # left_right_rand = None
         if self.training and not is_test_phase:
-            new_height = 168 #high_res 288 # low_res 168
-            new_width = 336 #high_res 576 # low_res 336
+            new_height = self.crop_height #high_res 288 # low_res 168
+            new_width = self.crop_width #high_res 576 # low_res 336
             random_crop = (randint(0,w-new_width),
                         randint(0,h-new_height))
             # left_right_rand = randint(0,1) == 1
