@@ -4,4 +4,4 @@ dataset:kitti2015
 holdout:validation1
 training:['training']
 epoch:1
-all_args:Namespace(batch=1, crop_height=168, crop_width=336, dataset='kitti2015', datasets_dir='../datasets', epochs=800, file='splits.json', finetuning_resume=True, freeze_starting_with=None, learning_rate=0.001, local_rank=-1, method='LEAStereo', resume=None, resume_method='LEAStereo', save='../weights/kitti15/test', trainsplits=['training'], valsplit='validation1')
+all_args:Namespace(batch=4, crop_height=168, crop_width=336, dataset='kitti2015', datasets_dir='../datasets', epochs=800, file='splits.json', finetuning_resume=True, freeze_starting_with=None, learning_rate=0.001, local_rank=0, method='LEAStereo', resume=None, resume_method='LEAStereo', save='../weights/kitti15/test', trainsplits=['training'], valsplit='validation1')

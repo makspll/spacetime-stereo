@@ -68,10 +68,11 @@ class GenericRunner():
             if self.args.local_rank != -1:
                 model = DistributedDataParallel(model.cuda(),
                     device_ids=[self.args.local_rank],
-                    output_device=[self.args.local_rank])
+                    output_device=[self.args.local_rank],
+                    find_unused_parameters=True)
             else:
                 model = DataParallel(model).cuda()
-                
+
         if weights_path: #opt.resume:
             if os.path.isfile(weights_path):
                 print("=> loading checkpoint '{}'".format(weights_path))
@@ -153,7 +154,7 @@ class GenericRunner():
                 acc_all += acc
                 train_end_time = time.time()
                 train_time = train_end_time - train_start_time
-                print("===> Epoch[{}]({}/{}): Loss: ({:.4f}), Acc.: ({:.4f}) Time: ({:.2f}s)".format(epoch, iteration, len(loader), loss.item(),acc,train_time))
+                print("===> Epoch[{}({})]({}/{}): Loss: ({:.4f}), Acc.: ({:.4f}) Time: ({:.2f}s)".format(epoch, self.args.local_rank,iteration, len(loader), loss.item(),acc,train_time))
             else:
                 print(f"===> Epoch[{epoch}]: Skipped " )
 

@@ -78,9 +78,10 @@ if __name__ == "__main__":
 
     
     args = PARSER_TRAIN.parse_args()
-    print(torch.cuda.device_count(),args.local_rank)
     import os 
-    print(os.getenv("RANK","none"),os.getenv("LOCAL_RANK","none"))
+    print(f'Rank:{os.getenv("RANK","none")}'
+            + f'Local Rank:{os.getenv("LOCAL_RANK","none")}'
+            + f'GPUs:{torch.cuda.device_count()}')
 
     if args.local_rank != -1:
         torch.distributed.init_process_group(backend='nccl',init_method='env://')
@@ -122,13 +123,15 @@ if __name__ == "__main__":
         os.makedirs(out_path)
 
     if args.local_rank != -1:
-        sampler_train = DistributedSampler(dataset_train)
+        sampler_train = DistributedSampler(dataset_train,shuffle=True)
         sampler_val = DistributedSampler(dataset_val)
+        shuffle=False
     else:
         sampler_train = None 
         sampler_val = None 
-        
-    train_loader = DataLoader(dataset_train, batch_size, shuffle=True,pin_memory=True,sampler=sampler_train)
+        shuffle=True 
+
+    train_loader = DataLoader(dataset_train, batch_size, shuffle=shuffle,pin_memory=True,sampler=sampler_train)
     val_loader = DataLoader(dataset_val, 1, shuffle=False, pin_memory=True, sampler=sampler_val)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, betas=(0.9,0.999))
