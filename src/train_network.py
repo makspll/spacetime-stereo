@@ -235,7 +235,7 @@ if __name__ == "__main__":
             end = time()
 
             taken = end-start
-            print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {acc_t}, Acc. val: {acc_v}, Loss train: {loss_t}, Loss Val: {loss_v}  lr: {scheduler.get_last_lr()}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
+            print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {float(acc_t):.2f}, Acc. val: {float(acc_v):.2f}, Loss train: {float(loss_t):.2f}, Loss Val: {float(loss_v):.2f}  lr: {scheduler.get_last_lr():.2f}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
 
         scheduler.step()
 
