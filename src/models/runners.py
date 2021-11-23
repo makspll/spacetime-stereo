@@ -75,7 +75,7 @@ class GenericRunner():
         if weights_path: #opt.resume:
             if os.path.isfile(weights_path):
                 print("=> loading checkpoint '{}'".format(weights_path))
-                checkpoint = torch.load(weights_path)
+                checkpoint = torch.load(weights_path,map_location=f'cuda:{self.args.local_rank}')
                 
                 converted = convert_weights(checkpoint['state_dict'],weights_source,self.model_cls)
                 model.load_state_dict(converted, strict=False)      
