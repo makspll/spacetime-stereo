@@ -90,10 +90,10 @@ class MatchingNetwork(nn.Module):
                 t.shape[0],t.shape[1],t.shape[2],target_size[0],target_size[1],target_size[2]
             )
             for time in range(t.shape[1]):
-                out[:,time] = F.upsample(t[:,time],target_size,**kwargs)
+                out[:,time] = F.interpolate(t[:,time],target_size,**kwargs)
             t = out 
         else:
-            t = F.upsample(t,target_size,**kwargs)
+            t = F.interpolate(t,target_size,**kwargs)
         return t 
 
     def forward(self, x):

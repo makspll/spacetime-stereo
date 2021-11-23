@@ -11,14 +11,12 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, MaxNLocator
 from torch.utils.data.distributed import DistributedSampler
-
-torch.manual_seed(0)
 import random
+torch.manual_seed(0)
 random.seed(0)
 np.random.seed(0)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 def get_splits(path):
@@ -86,6 +84,12 @@ if __name__ == "__main__":
     if args.local_rank != -1:
         torch.distributed.init_process_group(backend='nccl',init_method='env://')
         torch.cuda.set_device(args.local_rank)
+
+    torch.manual_seed(0)
+    random.seed(0)
+    np.random.seed(0)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     print(f"===> Building model with parameters: \n{args}\n")
 
@@ -228,11 +232,11 @@ if __name__ == "__main__":
                     losses_val = losses_val,
                     accuracies_train = accuracies_train)
             make_plot(out_path, epoch, accuracies_train, losses_train, accuracies_val, losses_val, start_epoch = epoch_start)
-            
+            end = time()
+
+            taken = end-start
+            print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {acc_t}, Acc. val: {acc_v}, Loss train: {loss_t}, Loss Val: {loss_v}  lr: {scheduler.get_last_lr()}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
+
         scheduler.step()
 
-        end = time()
-
-        taken = end-start
-        print(f"====> Epoch took: {taken:.2f}s, lr: {scheduler.get_last_lr()}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
 

@@ -119,7 +119,7 @@ class GenericRunner():
 
                 sys.stdout.flush()
 
-        print("===> Test: Avg. Accuracy: ({})({:.4f})".format(self.args.local_rank,acc_all/valid_iteration))
+        # print("===> Test: Avg. Accuracy: ({})({:.4f})".format(self.args.local_rank,acc_all/valid_iteration))
         return (acc_all/valid_iteration, epoch_loss /valid_iteration)
 
 
@@ -152,7 +152,7 @@ class GenericRunner():
 
             sys.stdout.flush()
                                     
-        print("===> Epoch {}({}) Complete: Avg. Loss: ({:.4f}), Avg. Acc.: ({:.4f})".format(epoch,self.args.local_rank, epoch_loss / valid_iteration, acc_all/ valid_iteration))
+        # print("===> Epoch {}({}) Complete: Avg. Loss: ({:.4f}), Avg. Acc.: ({:.4f})".format(epoch,self.args.local_rank, epoch_loss / valid_iteration, acc_all/ valid_iteration))
         return (acc_all / valid_iteration, (epoch_loss/ valid_iteration))
 
 class LEASTereoRunner(GenericRunner):
