@@ -244,4 +244,6 @@ if __name__ == "__main__":
 
         scheduler.step()
 
+        # wait for save to finish if it's in progress
+        torch.distributed.barrier()
 
