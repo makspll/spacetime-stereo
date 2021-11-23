@@ -12,11 +12,19 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, MaxNLocator
 from torch.utils.data.distributed import DistributedSampler
 import random
-torch.manual_seed(0)
-random.seed(0)
-np.random.seed(0)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+
+
+def set_seeds(seed = 0):
+    torch.manual_seed(0)
+    random.seed(0)
+    np.random.seed(0)
+    torch.cuda.manual_seed(0)
+    torch.cuda.manual_seed_all(0)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+set_seeds(0)
+
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 def get_splits(path):
@@ -85,11 +93,6 @@ if __name__ == "__main__":
         torch.distributed.init_process_group(backend='nccl',init_method='env://')
         torch.cuda.set_device(args.local_rank)
 
-    torch.manual_seed(0)
-    random.seed(0)
-    np.random.seed(0)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
     print(f"===> Building model with parameters: \n{args}\n")
 
@@ -243,6 +246,7 @@ if __name__ == "__main__":
             print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {acc_t:.2f}, Acc. val: {acc_v:.2f}, Loss train: {loss_t:.2f}, Loss Val: {loss_v:.2f}  lr: {scheduler.get_last_lr()[-1]:.6f}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
 
         scheduler.step()
+        sampler_train.set_epoch(epoch)
 
         # wait for save to finish if it's in progress
         torch.distributed.barrier()
