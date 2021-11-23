@@ -145,8 +145,7 @@ if __name__ == "__main__":
     epoch_start = 1
     training_epoch_start = 1
     if not args.finetuning_resume:
-        map_location = {'cuda:%d' % 0: 'cuda:%d' % torch.distributed.get_rank()}
-        checkpoint = torch.load(resume_path, map_location=map_location)
+        checkpoint = torch.load(resume_path,map_location=args.local_rank)
         try:
             optimizer.load_state_dict(checkpoint['optimizer'])
         except:

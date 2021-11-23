@@ -68,7 +68,7 @@ class GenericRunner():
                 model = DistributedDataParallel(model.cuda(),
                     device_ids=[self.args.local_rank],
                     output_device=[self.args.local_rank],
-                    find_unused_parameters=True)
+                    find_unused_parameters=True).cuda()
             else:
                 model = DataParallel(model).cuda()
 
