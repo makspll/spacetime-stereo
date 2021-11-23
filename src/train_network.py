@@ -215,10 +215,15 @@ if __name__ == "__main__":
                 loss_t /= torch.distributed.get_world_size()
                 loss_v /= torch.distributed.get_world_size()
 
-            accuracies_train.append(acc_t.cpu().numpy()/100)
-            losses_train.append(loss_t.cpu().numpy())
-            accuracies_val.append(acc_v.cpu().numpy()/100)
-            losses_val.append(loss_v.cpu().numpy())
+            acc_t = acc_t.cpu().item() / 100
+            loss_t = loss_t.item()
+            acc_v = acc_v.item() / 100
+            loss_v = loss_v.item()
+
+            accuracies_train.append(acc_t)
+            losses_train.append(loss_t)
+            accuracies_val.append(acc_v)
+            losses_val.append(loss_v)
 
             best = False
             if acc_v > best_acc:
@@ -235,7 +240,7 @@ if __name__ == "__main__":
             end = time()
 
             taken = end-start
-            print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {float(acc_t):.2f}, Acc. val: {float(acc_v):.2f}, Loss train: {float(loss_t):.2f}, Loss Val: {float(loss_v):.2f}  lr: {scheduler.get_last_lr():.2f}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
+            print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {acc_t:.2f}, Acc. val: {acc_v:.2f}, Loss train: {loss_t:.2f}, Loss Val: {loss_v:.2f}  lr: {scheduler.get_last_lr():.2f}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
 
         scheduler.step()
 
