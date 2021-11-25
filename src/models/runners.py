@@ -65,7 +65,8 @@ class GenericRunner():
 
         if cuda:
             if self.args.local_rank != -1:
-                model = DistributedDataParallel(model.cuda(),
+                model = DistributedDataParallel(
+                    torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.cuda()),
                     device_ids=[self.args.local_rank],
                     output_device=[self.args.local_rank],
                     find_unused_parameters=True).cuda()

@@ -148,6 +148,7 @@ if __name__ == "__main__":
     losses_train = []
     accuracies_val = []
     losses_val = []
+    best_acc = 0
 
     epoch_start = 1
     training_epoch_start = 1
@@ -170,10 +171,10 @@ if __name__ == "__main__":
                 losses_train = checkpoint['losses_train']
                 accuracies_val = checkpoint['accuracies_val']
                 losses_val = checkpoint['losses_val']
+                best_acc = checkpoint.get('best_acc',0)
         except:
             print("Could not load epoch key")
 
-    best_acc = 0
     save_every = 1
     if epochs > 10:
         save_every = 15
@@ -238,7 +239,8 @@ if __name__ == "__main__":
                     losses_train = losses_train,
                     accuracies_val = accuracies_val,
                     losses_val = losses_val,
-                    accuracies_train = accuracies_train)
+                    accuracies_train = accuracies_train,
+                    best_acc=best_acc)
             make_plot(out_path, epoch, accuracies_train, losses_train, accuracies_val, losses_val, start_epoch = epoch_start)
             end = time()
 
