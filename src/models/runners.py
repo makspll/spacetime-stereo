@@ -76,10 +76,12 @@ class GenericRunner():
         if weights_path: #opt.resume:
             if os.path.isfile(weights_path):
                 print("=> loading checkpoint '{}'".format(weights_path))
-                checkpoint = torch.load(weights_path,map_location=f'cuda:{self.args.local_rank}')
-                
+                if self.args.local_rank != -1:
+                    checkpoint = torch.load(weights_path,map_location=f'cuda:{self.args.local_rank}')
+                else:
+                    checkpoint =  torch.load(weights_path)
                 converted = convert_weights(checkpoint['state_dict'],weights_source,self.model_cls)
-                model.load_state_dict(converted, strict=False)      
+                model.load_state_dict(converted, strict=True)      
             else:
                 print("=> no checkpoint found at '{}'".format(weights_path))
         return model
@@ -165,8 +167,8 @@ class LEASTereoRunner(GenericRunner):
         
         dataset = args.dataset
 
-        self.crop_width = int(args.crop_width)
-        self.crop_height = int(args.crop_height)
+        self.crop_width = int(vars(args).get('crop_width',0))
+        self.crop_height = int(vars(args).get('crop_height',0))
         self.crop_width_out = 1248
         self.crop_height_out = 384 
         self.device = 'cuda'

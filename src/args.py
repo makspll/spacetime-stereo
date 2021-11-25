@@ -13,6 +13,7 @@ PARSER.add_argument('--datasetsplit','-ds', default='training')
 PARSER.add_argument('--splitname', '-s', default='validation1')
 PARSER.add_argument('--method', '-m', default='LEAStereo')
 PARSER.add_argument('--permute_keys', '-sk',nargs="+",default=[], help="permute the given keys from the dataset (inputs), for calculating feature importance")
+PARSER.add_argument('--local_rank', '-loc_r',type=int,default=-1 ,help="the uniue id of the process (0 = master), decides which GPU is used")
 
 PARSER_TRAIN = argparse.ArgumentParser(description='Run given network on the given split and store outpus + running times')
 

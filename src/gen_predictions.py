@@ -30,7 +30,7 @@ METHODS = {
 
 }
 DATASETS = {
-    'kitti2015': lambda *args: Kitti15Dataset(os.path.join(SCRIPT_DIR,'..','datasets','kitti2015'),*args)
+    'kitti2015': lambda *args: Kitti15Dataset(*args)
 }
 
 if __name__ == "__main__":
@@ -42,6 +42,7 @@ if __name__ == "__main__":
     resume_method = METHODS[args.resume_method](args)
     indices = splits[args.dataset][args.method][args.datasetsplit][args.splitname]
     dataset = DATASETS[args.dataset](
+        args.datasets_dir,
         args.datasetsplit == "training", 
         indices,
         method.transform,

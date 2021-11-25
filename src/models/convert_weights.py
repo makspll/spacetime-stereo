@@ -79,7 +79,7 @@ def convert_weights(state_dict,weights_source, weights_target):
                 "module.matching.stem1.bn.running_var"])
 
         # nets which output multiple disparities, or change matching network output 
-        if (weights_target is not STSEarlyFusionConcat):
+        if (weights_target is not STSEarlyFusionConcat and not weights_target is LEAStereo):
             print("===> converting to " + str(weights_target) )
             filters.update([ "module.matching.conv_out.conv.weight",
                         "module.matching.conv_out.bn.weight",
