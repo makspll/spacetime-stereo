@@ -89,7 +89,9 @@ if __name__ == "__main__":
             + f'Local Rank:{os.getenv("LOCAL_RANK","none")}'
             + f'GPUs:{torch.cuda.device_count()}[{os.getenv("CUDA_VISIBLE_DEVICES","")}]')
 
+    
     if args.local_rank != -1:
+        assert(torch.cuda.device_count() > 0)
         torch.distributed.init_process_group(backend='nccl',init_method='env://')
         torch.cuda.set_device(args.local_rank)
 
