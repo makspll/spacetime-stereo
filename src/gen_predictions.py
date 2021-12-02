@@ -48,7 +48,8 @@ if __name__ == "__main__":
         method.transform,
         True, # test phase
         method.get_keys(),
-        args.permute_keys)
+        args.permute_keys,
+        args.replace_keys)
     model = method.get_model(args.resume,resume_method.model_cls)
     model.eval()
 

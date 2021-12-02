@@ -111,7 +111,9 @@ if __name__ == "__main__":
         indices_val,
         method.transform,
         True, # test phase
-        method.get_keys())
+        method.get_keys(),
+        args.permute_keys,
+        args.replace_keys)
 
     indices_train = [splits[args.dataset][args.method]["training"][x] for x in args.trainsplits]
     dataset_train = DATASETS[args.dataset](
@@ -120,7 +122,9 @@ if __name__ == "__main__":
         [item for sublist in indices_train for item in sublist], # flatten 
         method.transform,
         False, # no test phase
-        method.get_keys())
+        method.get_keys(),
+        args.permute_keys,
+        args.replace_keys)
 
     resume_path = args.resume
     model = method.get_model(resume_path, METHODS[args.resume_method](args).model_cls)
@@ -197,7 +201,7 @@ if __name__ == "__main__":
         f.write("epoch:" + str(training_epoch_start) + '\n')
         f.write("all_args:" + str(args) + '\n')
 
-
+    print("===> Beginning Training")
     for epoch in range(training_epoch_start, epochs + 1):
         start = time()
         acc_t,loss_t=method.train(epoch,model,train_loader, optimizer)
@@ -247,11 +251,13 @@ if __name__ == "__main__":
             end = time()
 
             taken = end-start
-            print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {acc_t:.2f}, Acc. val: {acc_v:.2f}, Loss train: {loss_t:.2f}, Loss Val: {loss_v:.2f}  lr: {scheduler.get_last_lr()[-1]:.6f}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
+            print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {acc_t:.2f}, Acc. val: {acc_v:.3f}({best_acc:.3f}), Loss train: {loss_t:.2f}, Loss Val: {loss_v:.2f}  lr: {scheduler.get_last_lr()[-1]:.6f}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
 
         scheduler.step()
-        sampler_train.set_epoch(epoch)
+        
 
         # wait for save to finish if it's in progress
-        torch.distributed.barrier()
+        if args.local_rank != -1:
+            sampler_train.set_epoch(epoch)
+            torch.distributed.barrier()
 

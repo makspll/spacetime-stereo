@@ -81,7 +81,7 @@ class GenericRunner():
                 else:
                     checkpoint =  torch.load(weights_path)
                 converted = convert_weights(checkpoint['state_dict'],weights_source,self.model_cls)
-                model.load_state_dict(converted, strict=True)      
+                model.load_state_dict(converted, strict=False)      
             else:
                 print("=> no checkpoint found at '{}'".format(weights_path))
         return model

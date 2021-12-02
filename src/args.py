@@ -1,5 +1,6 @@
 import argparse
 import os
+import json 
 
 PARSER = argparse.ArgumentParser(description='Run given network on the given split and store outpus + running times')
 
@@ -14,9 +15,9 @@ PARSER.add_argument('--splitname', '-s', default='validation1')
 PARSER.add_argument('--method', '-m', default='LEAStereo')
 PARSER.add_argument('--permute_keys', '-sk',nargs="+",default=[], help="permute the given keys from the dataset (inputs), for calculating feature importance")
 PARSER.add_argument('--local_rank', '-loc_r',type=int,default=-1 ,help="the uniue id of the process (0 = master), decides which GPU is used")
+PARSER.add_argument('--replace_keys', '-rk',type=json.loads)
 
 PARSER_TRAIN = argparse.ArgumentParser(description='Run given network on the given split and store outpus + running times')
-
 PARSER_TRAIN.add_argument('file')
 PARSER_TRAIN.add_argument('datasets_dir', help="directory containing root folders of each dataset")
 PARSER_TRAIN.add_argument('save', help="path to overwrite/save new weights to")
@@ -34,3 +35,5 @@ PARSER_TRAIN.add_argument('--freeze-starting-with', '-f', default=None ,help="fr
 PARSER_TRAIN.add_argument('--crop_width', '-cw', default=336 ,help="the size of the random crop applied to the input image during training")
 PARSER_TRAIN.add_argument('--crop_height', '-ch', default=168 ,help="the size of the random crop applied to the input image during training")
 PARSER_TRAIN.add_argument('--local_rank', '-loc_r',type=int,default=-1 ,help="the uniue id of the process (0 = master), decides which GPU is used")
+PARSER_TRAIN.add_argument('--permute_keys', '-sk',nargs="+",default=[], help="permute the given keys from the dataset (inputs), for calculating feature importance")
+PARSER_TRAIN.add_argument('--replace_keys', '-rk',type=json.loads)
