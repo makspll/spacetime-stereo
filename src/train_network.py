@@ -23,7 +23,6 @@ def set_seeds(seed = 0):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-set_seeds(0)
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -84,6 +83,9 @@ if __name__ == "__main__":
 
     
     args = PARSER_TRAIN.parse_args()
+
+    set_seeds(args.seed)
+
     import os 
     print(f'Rank:{os.getenv("RANK","none")}'
             + f'Local Rank:{os.getenv("LOCAL_RANK","none")}'
@@ -159,7 +161,7 @@ if __name__ == "__main__":
     epoch_start = 1
     training_epoch_start = 1
     if not args.finetuning_resume:
-        checkpoint = torch.load(resume_path,map_location=f'cuda:{args.local_rank}')
+        checkpoint = torch.load(resume_path,map_location=f'cuda:{args.local_rank if args.local_rank != -1 else 0}')
         try:
             optimizer.load_state_dict(checkpoint['optimizer'])
         except:

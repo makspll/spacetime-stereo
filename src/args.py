@@ -37,3 +37,4 @@ PARSER_TRAIN.add_argument('--crop_height', '-ch', default=168 ,help="the size of
 PARSER_TRAIN.add_argument('--local_rank', '-loc_r',type=int,default=-1 ,help="the uniue id of the process (0 = master), decides which GPU is used")
 PARSER_TRAIN.add_argument('--permute_keys', '-sk',nargs="+",default=[], help="permute the given keys from the dataset (inputs), for calculating feature importance")
 PARSER_TRAIN.add_argument('--replace_keys', '-rk',type=json.loads)
+PARSER_TRAIN.add_argument('--seed', '-s',type=int,default=0)
