@@ -54,8 +54,9 @@ if __name__ == "__main__":
     model.eval()
 
     torch.backends.cudnn.benchmark = True
-
-    out_path = os.path.join(args.outdir,args.method,args.dataset,args.datasetsplit,args.splitname)
+    
+    save_dir = args.method if not args.save_name else args.save_name
+    out_path = os.path.join(args.outdir,save_dir,args.dataset,args.datasetsplit,args.splitname)
     eval_file = os.path.join(out_path,'results.csv')
 
     if os.path.exists(eval_file):
