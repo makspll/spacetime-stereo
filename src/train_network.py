@@ -147,7 +147,7 @@ if __name__ == "__main__":
         shuffle=True 
 
     train_loader = DataLoader(dataset_train, batch_size, shuffle=shuffle,pin_memory=True,sampler=sampler_train)
-    val_loader = DataLoader(dataset_val, 1, shuffle=False, pin_memory=True, sampler=sampler_val)
+    val_loader = DataLoader(dataset_val, 1, shuffle=False, pin_memory=True)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, betas=(0.9,0.999))
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30,50,300], gamma=0.5)
@@ -207,26 +207,20 @@ if __name__ == "__main__":
     for epoch in range(training_epoch_start, epochs + 1):
         start = time()
         acc_t,loss_t=method.train(epoch,model,train_loader, optimizer)
-        acc_v,loss_v=method.validate(model,val_loader)
-        acc_t = torch.Tensor([acc_t]).cuda()
-        acc_v = torch.Tensor([acc_v]).cuda()
-        loss_t = torch.Tensor([loss_t]).cuda()
-        loss_v = torch.Tensor([loss_v]).cuda()
+        
+        if args.local_rank <= 0: 
+            acc_v,loss_v=method.validate(model,val_loader)
+        
+                
+            acc_t = torch.Tensor([acc_t]).cuda()
+            acc_v = torch.Tensor([acc_v]).cuda()
+            loss_t = torch.Tensor([loss_t]).cuda()
+            loss_v = torch.Tensor([loss_v]).cuda()
 
-        if args.local_rank != -1:
-            torch.distributed.reduce(acc_v,0)
-            torch.distributed.reduce(acc_t,0)
-            torch.distributed.reduce(loss_v,0)
-            torch.distributed.reduce(loss_v,0)
-
-
-        if args.local_rank == -1 or torch.distributed.get_rank() == 0:
             if args.local_rank != -1:
-                acc_t /= torch.distributed.get_world_size()
-                acc_v /= torch.distributed.get_world_size()
-                loss_t /= torch.distributed.get_world_size()
-                loss_v /= torch.distributed.get_world_size()
-
+                torch.distributed.reduce(acc_t,0)
+                torch.distributed.reduce(loss_t,0)
+                
             acc_t = acc_t.cpu().item() / 100
             loss_t = loss_t.item()
             acc_v = acc_v.item() / 100
