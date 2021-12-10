@@ -208,6 +208,10 @@ if __name__ == "__main__":
         start = time()
         acc_t,loss_t=method.train(epoch,model,train_loader, optimizer)
         
+        if args.local_rank != -1:
+            torch.distributed.reduce(acc_t,0)
+            torch.distributed.reduce(loss_t,0)
+
         if args.local_rank <= 0: 
             acc_v,loss_v=method.validate(model,val_loader)
         
@@ -217,9 +221,7 @@ if __name__ == "__main__":
             loss_t = torch.Tensor([loss_t]).cuda()
             loss_v = torch.Tensor([loss_v]).cuda()
 
-            if args.local_rank != -1:
-                torch.distributed.reduce(acc_t,0)
-                torch.distributed.reduce(loss_t,0)
+
                 
             acc_t = acc_t.cpu().item() / 100
             loss_t = loss_t.item()
