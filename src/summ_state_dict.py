@@ -8,4 +8,4 @@ if __name__ == "__main__":
 
     c = torch.load(path,map_location='cpu')
     val_max = np.argmax(c['accuracies_val'])
-    print(val_max, 1 - c['accuracies_val'][val_max])
+    print(val_max, c['accuracies_val'][val_max])
