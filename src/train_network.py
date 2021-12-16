@@ -252,15 +252,10 @@ if __name__ == "__main__":
             taken = end-start
             print(f"====> Epoch {epoch}: Time: {taken:.2f}s, Acc. train: {acc_t:.2f}, Acc. val: {acc_v:.3f}({best_acc:.3f}), Loss train: {loss_t:.2f}, Loss Val: {loss_v:.2f}  lr: {scheduler.get_last_lr()[-1]:.6f}, ETA: {((taken) * (epochs - epoch)) / 60 / 60:.2f}h")
 
-        print("A")
         scheduler.step()
-        print("B")
 
         # wait for save to finish if it's in progress
         if args.local_rank != -1:
-            print("C")
             sampler_train.set_epoch(epoch)
-            print("D")
             torch.distributed.barrier()
-            print("E")
 

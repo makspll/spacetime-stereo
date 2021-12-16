@@ -113,7 +113,9 @@ class GenericRunner():
                 targets = [x.cuda() for x in targets]
 
             with torch.no_grad(): 
-                outputs = model(*inputs)
+                # workaround around torch.barrier bug https://github.com/pytorch/pytorch/issues/54059
+                # fixed in some patch to 1.7
+                outputs = model.module(*inputs) 
                 (loss,acc) = self.loss_accuracy_function(outputs,targets)
 
                 epoch_loss += loss.item()
