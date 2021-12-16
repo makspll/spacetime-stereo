@@ -37,8 +37,8 @@ if __name__ == "__main__":
             average_readings[i].append(
                 sum([readings[y][j] for y in range(len(readings))]) / len(readings))
 
-    print("Individual t-test: ",stats.ttest_ind(average_readings[0],average_readings[1],equal_var=False))
-    print("Ranksums Wilcox: ",stats.ranksums(average_readings[0],average_readings[1]))
+    print("Ranksums Wilcox (unpaired): ",stats.ranksums(average_readings[0],average_readings[1]))
+    print("signed-rank Wilcox (paired): ",stats.wilcoxon(average_readings[0],average_readings[1]))
     print("System 1, mean, std")
     print(np.mean(average_readings[0]), np.std(average_readings[0]))
     print("System 2, mean, std")
@@ -46,9 +46,7 @@ if __name__ == "__main__":
 
     import seaborn
     import matplotlib.pyplot as plt 
-    # plt.hist(average_readings[0],bins=20,label='system1')
-    # plt.hist(average_readings[1],bins=20,label='system2')
-    # plt.show()
+
     ax = seaborn.histplot(data=average_readings[0],kde=True,color='blue',legend=True)
     seaborn.histplot(data=average_readings[1],ax=ax,kde=True,color='red',legend=True)
     plt.legend(labels=['system 1','system 2'])
