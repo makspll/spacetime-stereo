@@ -1,0 +1,7 @@
+{'lr': 0.00025, 'betas': (0.9, 0.999), 'eps': 1e-08, 'weight_decay': 0, 'amsgrad': False, 'initial_lr': 0.00025}
+{'milestones': Counter({30: 1, 50: 1, 300: 1}), 'gamma': 0.5, 'base_lrs': [0.00025], 'last_epoch': 0, '_step_count': 1, '_get_lr_called_within_step': False, '_last_lr': [0.00025]}
+dataset:kitti2015
+holdout:validation1
+training:['training']
+epoch:1
+all_args:Namespace(batch=1, crop_height='264', crop_width='528', dataset='kitti2015', datasets_dir='/disk/scratch/s1751752', epochs=600, file='/home/s1751752/git/spacetime-stereo/src/splits.json', finetuning_resume=True, freeze_starting_with=None, learning_rate=0.00025, local_rank=0, method='LEAStereo', permute_keys=[], replace_keys=None, resume='/home/s1751752/git/spacetime-stereo/src/reproductions/LEAStereo/run/sceneflow/best/checkpoint/best.pth', resume_method='LEAStereoOrig', save='/home/s1751752/git/spacetime-stereo/weights/kitti2015/LEAStereo_528x264-1e-3quarter-8GPU', seed=0, trainsplits=['training'], valsplit='validation1')
