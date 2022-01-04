@@ -1,3 +1,4 @@
+from math import ceil, floor
 from scipy import stats 
 import argparse 
 import csv 
@@ -47,7 +48,9 @@ if __name__ == "__main__":
     import seaborn
     import matplotlib.pyplot as plt 
 
-    ax = seaborn.histplot(data=average_readings[0],kde=True,color='blue',legend=True)
-    seaborn.histplot(data=average_readings[1],ax=ax,kde=True,color='red',legend=True)
-    plt.legend(labels=['system 1','system 2'])
+    diffs = [a-b for a,b in zip(average_readings[0],average_readings[1])]
+    
+    ax = seaborn.histplot(data=diffs,kde=True,color='blue',legend=True,bins=[x for x in np.linspace(floor(np.min(diffs))-1,ceil(np.max(diffs)+1),num=40)])
+    plt.vlines(np.mean(diffs),0,ax.get_ylim()[1],colors='red',label='mean')
+    plt.legend(labels=['sys1 - sys2','mean'])
     plt.show()
