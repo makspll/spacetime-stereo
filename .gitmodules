@@ -4,3 +4,6 @@
 [submodule "src/reproductions/LEAStereo"]
 	path = src/reproductions/LEAStereo
 	url = https://github.com/XuelianCheng/LEAStereo.git
+[submodule "src/reproductions/RAFT"]
+	path = src/reproductions/RAFT
+	url = https://github.com/princeton-vl/RAFT

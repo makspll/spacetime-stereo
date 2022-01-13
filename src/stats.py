@@ -49,7 +49,9 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt 
 
     diffs = [a-b for a,b in zip(average_readings[0],average_readings[1])]
-    
+    idx_min = np.argmin(diffs)
+    print("Biggest difference: " + str(np.min(diffs)) + ", at line: " + str(idx_min+2) + ", s1:" + str(average_readings[0][idx_min]) + ", s2:" + str(average_readings[1][idx_min]))
+
     ax = seaborn.histplot(data=diffs,kde=True,color='blue',legend=True,bins=[x for x in np.linspace(floor(np.min(diffs))-1,ceil(np.max(diffs)+1),num=40)])
     plt.vlines(np.mean(diffs),0,ax.get_ylim()[1],colors='red',label='mean')
     plt.legend(labels=['sys1 - sys2','mean'])

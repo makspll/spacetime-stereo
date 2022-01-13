@@ -29,6 +29,9 @@ class GenericRunner():
     def get_keys(self):
         return self.keys
 
+    def gt_label_to_idx_map(self):
+        raise NotImplementedError()
+
     def get_output(self, model, sample, keys):
 
         inputs,targets = self.get_model_io_from_sample(sample, keys)
@@ -38,21 +41,30 @@ class GenericRunner():
             prediction = model(*[Variable(torch.tensor(x),requires_grad=False).cuda() for x in inputs])
         end_time = time.time()
         
-        temp = prediction.cpu()
-        temp = temp.detach()
-        temp = temp.numpy()
+        outputs = []
+        for o in prediction:
+            temp = o.cpu()
+            temp = temp.detach()
+            temp = temp.numpy()
 
-        output_resolution = sample[keys['resolution']]
-        height = temp.shape[-2]
-        width = temp.shape[-1]
+            output_resolution = sample[keys['resolution']]
+            height = temp.shape[-2]
+            width = temp.shape[-1]
 
-        if output_resolution[0] <= height and output_resolution[1]<= width:
-            temp = temp[:, height - output_resolution[0]: height, width - output_resolution[1]: width]
+            if output_resolution[0] <= height and output_resolution[1]<= width:
+                temp = temp[:, height - output_resolution[0]: height, width - output_resolution[1]: width]
 
-        temp = temp[0,0, :, :]
+            # if it's flow it will need more dimensions
+            if temp.shape[1] <= 1:
+                temp = temp[0,0, :, :]
+            else:
+                temp = temp[0,:, :, :]
+
+            outputs.append(temp)
+
         return {
             "runtime" : end_time - start_time,
-            "outputs" : temp,
+            "outputs" : outputs,
         }
 
     def get_model(self, weights_path, weights_source):
@@ -160,6 +172,63 @@ class GenericRunner():
         # print("===> Epoch {}({}) Complete: Avg. Loss: ({:.4f}), Avg. Acc.: ({:.4f})".format(epoch,self.args.local_rank, epoch_loss / valid_iteration, acc_all/ valid_iteration))
         return (acc_all / valid_iteration, (epoch_loss/ valid_iteration))
 
+
+class RAFTRunner(GenericRunner):
+    def __init__(self,args, training=False) -> None:
+        from models.raft.raft import RAFT
+        super().__init__(RAFT,args,training)
+        
+        dataset = args.dataset
+
+        self.iterations = 24
+        self.crop_width = int(vars(args).get('crop_width',0))
+        self.crop_height = int(vars(args).get('crop_height',0))
+        self.crop_width_out = 1248
+        self.crop_height_out = 384 
+        self.device = 'cuda'
+        self.maxdisp = 192
+        self.training = training 
+        self.last_crop = None
+        if dataset == 'sceneflow':
+            self.crop_width_out = 960
+            self.crop_height_out = 576
+        if self.training:
+            self.keys = set(['l0','l1','fl'])
+        else:
+            self.keys = (['l0','l1','fl','resolution','index'])
+    
+    def transform(self, inputs, keys, is_test_phase):
+
+        h,w,c = inputs[keys['l0']].shape[-3:]
+        new_height = self.crop_height_out
+        new_width = self.crop_width_out
+        random_crop = None
+        # left_right_rand = None
+        if self.training and not is_test_phase:
+            new_height = self.crop_height #high_res 288 # low_res 168
+            new_width = self.crop_width #high_res 576 # low_res 336
+            random_crop = (randint(0,w-new_width),
+                        randint(0,h-new_height))
+            # left_right_rand = randint(0,1) == 1
+
+
+        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['l1']] = kitti_transform(inputs[keys['l1']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['fl']] = kitti_transform(inputs[keys['fl']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+        return inputs 
+
+    def gt_label_to_idx_map(self):
+        return {'fl':self.iterations-1}
+
+    def get_model_io_from_sample(self, sample, keys):
+        return [sample[keys['l0']],sample[keys['l1']]], [sample[keys['fl']]]
+    
+    def get_model_io(self,batch):
+        return [torch.squeeze(batch[0],1),torch.squeeze(batch[1],1)], [torch.squeeze(batch[2],1).float()]
+    
+    def loss_accuracy_function(self, outputs, targets):
+        raise NotImplementedError()
+
 class LEASTereoRunner(GenericRunner):
     
     def __init__(self,args, training=False) -> None:
@@ -186,6 +255,9 @@ class LEASTereoRunner(GenericRunner):
             self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index'])
         assert(self.crop_width <= self.crop_width_out)
         assert(self.crop_height <= self.crop_height_out)
+
+    def gt_label_to_idx_map(self):
+        return {'d0':0}
 
     def transform(self, inputs, keys, is_test_phase):
 
@@ -294,6 +366,9 @@ class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
             self.keys = set(['l0','r0','l1','r1','d0','d1'])
         else:
             self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index'])
+
+    def gt_label_to_idx_map(self):
+        return {'d0':0,'d1':1}
 
     def loss_accuracy_function(self, outputs, targets):
             a = 0.75

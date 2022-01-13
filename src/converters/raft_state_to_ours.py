@@ -5,9 +5,8 @@ import numpy as np
 
 if __name__ == "__main__":
     path = sys.argv[1]
+    out_path = sys.argv[2]
 
     c = torch.load(path,map_location='cpu')
 
-    print(c.keys())
-    val_max = np.argmax(c['accuracies_val'])
-    print(val_max, c['accuracies_val'][val_max])
+    torch.save({"state_dict":c},out_path)
