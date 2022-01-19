@@ -11,6 +11,7 @@ import sys
 from .metrics import bad_n_error, AreaSource, two_disp_l1_loss
 from .convert_weights import convert_weights
 from torch.nn.parallel import DistributedDataParallel
+import math 
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 REPRODS_PATH = os.path.join(SCRIPT_DIR,'..','reproductions')
@@ -42,6 +43,10 @@ class GenericRunner():
         end_time = time.time()
         
         outputs = []
+
+        if not isinstance(prediction,list):
+            prediction = [prediction]
+
         for o in prediction:
             temp = o.cpu()
             temp = temp.detach()
@@ -50,11 +55,17 @@ class GenericRunner():
             output_resolution = sample[keys['resolution']]
             height = temp.shape[-2]
             width = temp.shape[-1]
-
-            if output_resolution[0] <= height and output_resolution[1]<= width:
-                temp = temp[:, height - output_resolution[0]: height, width - output_resolution[1]: width]
-
+            # if output_resolution[0] <= width and output_resolution[1]<= height:
+            #     width_pad = max(width - output_resolution[0],0) / 2
+            #     height_pad = max(height - output_resolution[1],0) / 2
+            #     pleft = math.floor(width_pad)
+            #     pright = math.ceil(width_pad)
+            #     ptop = math.floor(height_pad)
+            #     pbottom = math.ceil(height_pad)
+            #     print(temp.shape)
+            #     temp = temp[:,:, ptop: height - pbottom, pleft: width - pright]
             # if it's flow it will need more dimensions
+            
             if temp.shape[1] <= 1:
                 temp = temp[0,0, :, :]
             else:
@@ -180,11 +191,11 @@ class RAFTRunner(GenericRunner):
         
         dataset = args.dataset
 
-        self.iterations = 24
+        self.iterations = 20
         self.crop_width = int(vars(args).get('crop_width',0))
         self.crop_height = int(vars(args).get('crop_height',0))
-        self.crop_width_out = 1248
-        self.crop_height_out = 384 
+        self.crop_width_out = 1248#1248
+        self.crop_height_out = 376#384 
         self.device = 'cuda'
         self.maxdisp = 192
         self.training = training 
@@ -211,9 +222,8 @@ class RAFTRunner(GenericRunner):
                         randint(0,h-new_height))
             # left_right_rand = randint(0,1) == 1
 
-
-        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop) 
-        inputs[keys['l1']] = kitti_transform(inputs[keys['l1']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop,normalize_rgb=False,padding_mode="replicate") 
+        inputs[keys['l1']] = kitti_transform(inputs[keys['l1']], new_height, new_width, start_corner=random_crop,normalize_rgb=False,padding_mode="replicate") 
         inputs[keys['fl']] = kitti_transform(inputs[keys['fl']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
         return inputs 
 

@@ -108,7 +108,7 @@ class Kitti15Dataset(data.Dataset):
             outputs.append(fg_map)
 
         if 'resolution' in self.keys:
-            resolution = inputs[0].shape[1:]
+            resolution = [inputs[0].shape[1],inputs[0].shape[0]]
             outputs.append(resolution)
 
         if 'index' in self.keys:
@@ -140,14 +140,14 @@ class Kitti15Dataset(data.Dataset):
 
         disp_frames = []
         if "d0" in gt_label_to_idx_map:
-            disp_frames += "d0"
+            disp_frames += ["d0"]
         if "d1" in gt_label_to_idx_map:
-            disp_frames += "d1"
+            disp_frames += ["d1"]
 
         for d in disp_frames:
-            gt_noc = y[keys[f'{d}noc']].astype(float)
+            gt_noc = y[keys[f"{d}noc"]].astype(float)
             gt_oc = y[keys[d]].astype(float)
-            headers += [f'nocc_fg_{d}',f'nocc_all_{d}',f'occ_fg_{d}',f'occ_all_{d}','runtime']
+            headers += [f'nocc_fg_{d}',f'nocc_all_{d}',f'occ_fg_{d}',f'occ_all_{d}']
 
             # we only have fg maps for first frame
             if d == "d0":
@@ -182,7 +182,6 @@ class Kitti15Dataset(data.Dataset):
         if "fl" in gt_label_to_idx_map:
             gt_oc = y[keys["fl"]].astype(float)
             headers += ["fl_all"]
-            print(gt_label_to_idx_map["fl"])
             datas += [bad_n_error(3,
                 X[gt_label_to_idx_map["fl"]],
                 gt_oc)]

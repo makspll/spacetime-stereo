@@ -1,9 +1,10 @@
 import numpy as np
 import torch
 import random
+import torch.nn.functional as F
+import math 
 
-def crop_pad_to(x, new_height, new_width, start_corner=None):
-    
+def crop_pad_to(x, new_height, new_width, start_corner=None, padding_mode="constant"):
     if len(x.shape) > 2:    
         c = x.shape[-1] 
         h = x.shape[-3]
@@ -15,28 +16,36 @@ def crop_pad_to(x, new_height, new_width, start_corner=None):
         h = x.shape[0]
         w = x.shape[1]
         gray = True
+    
+    # pad to required dimensions if any axis is too short
+    # TODO: check odd dimensions and distribute padding with floor
 
-    if h <= new_height and w <= new_width: 
-        # padding zero 
-        temp = x
-        temp_data = np.zeros([new_height, new_width, c], 'float32')
-        temp_data[new_height - h: new_height, new_width - w: new_width, :] = temp    
+    width_pad = max(new_width - w,0) / 2
+    height_pad = max(new_height - h,0) / 2
+    pleft = math.floor(width_pad)
+    pright = math.ceil(width_pad)
+    ptop = math.floor(height_pad)
+    pbottom = math.ceil(height_pad)
+    if pleft or ptop:
+        channel_first = torch.Tensor(np.moveaxis(x,-1,0))
+        out = F.pad(channel_first[np.newaxis,:],[pleft,pright,ptop,pbottom],mode=padding_mode).numpy()[0,:]
+        out = np.moveaxis(out,0,-1)
     else:
         if start_corner:
             start_x = start_corner[0]
             start_y = start_corner[1]
-        # elif random_crop:
-            # start_x = random.randint(0, w - new_width)
-            # start_y = random.randint(0, h - new_height)
         else:
             start_x = int((w - new_width) / 2)
             start_y = int((h - new_height) / 2)
-        temp_data = x[start_y: start_y + new_height, start_x: start_x + new_width, :]
+
+        assert((start_x + new_width) <= w)
+        assert((start_y + new_height) <= h)
+
+        out = x[start_y: start_y + new_height, start_x: start_x + new_width, :]
 
     if gray:
-        return temp_data[:,:,0]
-
-    return temp_data
+        return out[:,:,0]
+    return out
 
 def normalize(x, means, stds):
     c = x.shape[-1]
@@ -49,7 +58,7 @@ def normalize(x, means, stds):
         out [:,:,c] = (x[:,:,c] - means[c]) / stds[c]
     return out 
 
-def kitti_transform(x, new_height, new_width, start_corner=None, normalize_rgb=True):
+def kitti_transform(x, new_height, new_width, start_corner=None, normalize_rgb=True, padding_mode="constant"):
 
     if normalize_rgb:
 
@@ -62,7 +71,7 @@ def kitti_transform(x, new_height, new_width, start_corner=None, normalize_rgb=T
 
         x = normalize(x,means,stds)
 
-    x = crop_pad_to(x, new_height, new_width, start_corner=start_corner)
+    x = crop_pad_to(x, new_height, new_width, start_corner=start_corner,padding_mode=padding_mode)
 
     if (len(x.shape) != 2):
         x = np.moveaxis(x,-1,0)

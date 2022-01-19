@@ -22,7 +22,7 @@ except:
 
 
 class RAFT(nn.Module):
-    def __init__(self, small=False,dropout=0,alternate_corr=False,mixed_precision=False,iterations=24):
+    def __init__(self, small=False,dropout=0,alternate_corr=False,mixed_precision=False,iterations=20):
         super(RAFT, self).__init__()
     # parser.add_argument('--name', default='raft', help="name your experiment")
     # parser.add_argument('--stage', help="determines which dataset to use for training") 
@@ -110,7 +110,7 @@ class RAFT(nn.Module):
 
     def forward(self, image1, image2, flow_init=None, upsample=True, test_mode=False):
         """ Estimate optical flow between pair of frames """
-        print(image1.size(),image2.size())
+
         image1 = 2 * (image1 / 255.0) - 1.0
         image2 = 2 * (image2 / 255.0) - 1.0
 

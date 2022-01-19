@@ -31,14 +31,12 @@ def bad_n_error(n, disp, gt, area : AreaSource = AreaSource.BOTH, fg_mask = None
     disp_over_valid = disp * valid_gt
 
     sum_gt = np.sum(valid_gt)
-    print(disp_over_valid.size,gt_cp.size,sum_gt)
     all_err = np.greater( np.abs(disp_over_valid-gt_cp),n).astype(int)
     
     if sum_gt == 0:
         return 100
 
     res = np.sum(all_err)/sum_gt
-    print(res * 100)
     return res*100
 
 
