@@ -52,20 +52,7 @@ class GenericRunner():
             temp = temp.detach()
             temp = temp.numpy()
 
-            output_resolution = sample[keys['resolution']]
-            height = temp.shape[-2]
-            width = temp.shape[-1]
-            # if output_resolution[0] <= width and output_resolution[1]<= height:
-            #     width_pad = max(width - output_resolution[0],0) / 2
-            #     height_pad = max(height - output_resolution[1],0) / 2
-            #     pleft = math.floor(width_pad)
-            #     pright = math.ceil(width_pad)
-            #     ptop = math.floor(height_pad)
-            #     pbottom = math.ceil(height_pad)
-            #     print(temp.shape)
-            #     temp = temp[:,:, ptop: height - pbottom, pleft: width - pright]
             # if it's flow it will need more dimensions
-            
             if temp.shape[1] <= 1:
                 temp = temp[0,0, :, :]
             else:
@@ -222,8 +209,8 @@ class RAFTRunner(GenericRunner):
                         randint(0,h-new_height))
             # left_right_rand = randint(0,1) == 1
 
-        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop,normalize_rgb=False,padding_mode="replicate") 
-        inputs[keys['l1']] = kitti_transform(inputs[keys['l1']], new_height, new_width, start_corner=random_crop,normalize_rgb=False,padding_mode="replicate") 
+        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop,normalize_rgb=True,padding_mode="replicate") 
+        inputs[keys['l1']] = kitti_transform(inputs[keys['l1']], new_height, new_width, start_corner=random_crop,normalize_rgb=True,padding_mode="replicate") 
         inputs[keys['fl']] = kitti_transform(inputs[keys['fl']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
         return inputs 
 
@@ -309,7 +296,7 @@ class LEASTereoRunner(GenericRunner):
             mask.detach_()
             valid_target_px = target[mask]
 
-            acc = 100 - bad_n_error(3,output.detach().cpu().numpy(),target.detach().cpu().numpy(),AreaSource.BOTH,max_disp=self.maxdisp)
+            acc = 100 - bad_n_error(3,output.detach().cpu().numpy(),target.detach().cpu().numpy(),AreaSource.BOTH,max_val=self.maxdisp)
             if(valid_target_px.size()[0] <= 0):
                 return (0,acc)
             else:
@@ -384,7 +371,7 @@ class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
             a = 0.75
             d0 = outputs[:,0]
             d1 = outputs[:,1]
-            acc = bad_n_error(3,d0.detach().cpu().numpy(),targets[0].detach().cpu().numpy(),AreaSource.BOTH,max_disp=self.maxdisp)
+            acc = bad_n_error(3,d0.detach().cpu().numpy(),targets[0].detach().cpu().numpy(),AreaSource.BOTH,max_val=self.maxdisp)
             acc = 100 - acc 
 
             return (two_disp_l1_loss(d0,d1,targets[0],targets[1],self.maxdisp,a=a),acc)
@@ -424,7 +411,47 @@ class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
         if not self.training:
             inputs[keys['d0noc']] = kitti_transform(inputs[keys['d0noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
             inputs[keys['d1noc']] = kitti_transform(inputs[keys['d1noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
-            inputs[keys['d1']] = kitti_transform(inputs[keys['d1']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+            inputs[keys['fgmap']] = kitti_transform(inputs[keys['fgmap']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+
+        return inputs 
+
+class STSLateFusion2Runner(STSEarlyFusionConcat2Runner):
+    def __init__(self,args, training=False) -> None:
+        from models.STSLateFusion2 import STSLateFusion2
+        super().__init__(args,training)
+        self.model_cls = STSLateFusion2
+
+        if self.training:
+            self.keys = set(['l0','r0','l1','r1','d0','d1','fl'])
+        else:
+            self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fl','fgmap','resolution','index'])
+
+    def transform(self, inputs, keys, is_test_phase):
+
+        h,w,c = inputs[keys['l0']].shape[-3:]
+        new_height = self.crop_height_out
+        new_width = self.crop_width_out
+        random_crop = None
+        # left_right_rand = None
+        if self.training and not is_test_phase:
+            new_height = self.crop_height #high_res 288 # low_res 168
+            new_width = self.crop_width #high_res 576 # low_res 336
+            random_crop = (randint(0,w-new_width),
+                        randint(0,h-new_height))
+            # left_right_rand = randint(0,1) == 1
+
+
+        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['r0']] = kitti_transform(inputs[keys['r0']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['l1']] = kitti_transform(inputs[keys['l1']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['r1']] = kitti_transform(inputs[keys['r1']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['d0']] = kitti_transform(inputs[keys['d0']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+        inputs[keys['d1']] = kitti_transform(inputs[keys['d1']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+        inputs[keys['fl']] = kitti_transform(inputs[keys['fl']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+
+        if not self.training:
+            inputs[keys['d0noc']] = kitti_transform(inputs[keys['d0noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+            inputs[keys['d1noc']] = kitti_transform(inputs[keys['d1noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
             inputs[keys['fgmap']] = kitti_transform(inputs[keys['fgmap']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
 
         return inputs 
