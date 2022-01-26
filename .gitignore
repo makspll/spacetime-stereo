@@ -1,5 +1,4 @@
 datasets
-predictions
 __pycache__
 *.pth
 !**best.pth
