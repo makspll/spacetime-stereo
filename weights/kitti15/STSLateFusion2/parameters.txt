@@ -1,0 +1,7 @@
+{'lr': 0.000125, 'betas': (0.9, 0.999), 'eps': 1e-08, 'weight_decay': 0, 'amsgrad': False, 'initial_lr': 0.001}
+{'milestones': Counter({30: 1, 50: 1, 300: 1}), 'gamma': 0.5, 'base_lrs': [0.001], 'last_epoch': 449, '_step_count': 450, '_get_lr_called_within_step': False, '_last_lr': [0.000125]}
+dataset:kitti2015
+holdout:validation1
+training:['training']
+epoch:451
+all_args:Namespace(batch=2, crop_height=168, crop_width=336, dataset='kitti2015', datasets_dir='../datasets/', epochs=600, file='splits.json', finetuning_resume=False, freeze_starting_with=None, learning_rate=0.001, local_rank=-1, method='STSLateFusion2', permute_keys=[], replace_keys=None, resume='../weights/kitti15/STSLateFusion2/epoch_450.pth', resume_method='STSLateFusion2', save='../weights/kitti15/STSLateFusion2/', seed=0, trainsplits=['training'], valsplit='validation1')
