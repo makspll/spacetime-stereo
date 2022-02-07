@@ -6,7 +6,8 @@ from .blocks.AutoEncoder import AutoEncoder
 from .LEAStereo import MatchingNetwork,FeatureNetwork
 import re
 from .raft.raft import RAFT
-
+import numpy as np
+from .warps import invert_flow,warp_with_flow
 
 class STSLateFusion2(nn.Module):
     def __init__(self, max_disp=192):
@@ -18,7 +19,7 @@ class STSLateFusion2(nn.Module):
         self.disp = Disparity.DisparitySelector(self.max_disp)
         self.flow = RAFT(iterations=24)
         self.flow.requires_grad_(False)
-        self.refiner = AutoEncoder(6, 2,stages=3)
+        self.refiner = AutoEncoder(4, 2,stages=3)
 
     def forward(self, l0_img, r0_img, l1_img, r1_img):
         # disparity at 0
@@ -56,19 +57,19 @@ class STSLateFusion2(nn.Module):
         disp1 = self.disp(cost1)   
 
         # flow left 
-        flow_left = self.flow(l0_img,l1_img)[-1]
-
+        flow_left = self.flow(l0_img,l1_img)[-1].detach().cpu()
+        warped_d1 = warp_with_flow(disp1[:].detach().cpu(),invert_flow(flow_left)).cuda()
+        flow_left = flow_left.cuda()
         # flow right
-        flow_right = self.flow(r0_img,r1_img)[-1]
+        # flow_right = self.flow(r0_img,r1_img)[-1]
 
         # autoencoder
         # combine all of the above, and 'refine' the disparities
-        # print(disp0.shape,disp1.shape)
-        refined_disparities = self.refiner(torch.cat((disp0,disp1,flow_left,flow_right),1))
-        # print(refined_disparities.shape)
+        refined_disparities = self.refiner(torch.cat((disp0,warped_d1,flow_left),1))
+        # skip connection + warping
 
-        # skip connection
         refined_disparities[:,0] += disp0[:,0]
-        refined_disparities[:,1] += disp1[:,0]
+        refined_disparities[:,1] += warped_d1[:,0]
 
-        return refined_disparities
+
+        return [refined_disparities[:,0],refined_disparities[:,1]]

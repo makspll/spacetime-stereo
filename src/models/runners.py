@@ -3,7 +3,7 @@ import time
 import torch.nn.functional as F
 from torch.autograd.variable import Variable
 from torch.nn.parallel.data_parallel import DataParallel
-
+from scipy import interpolate
 from .augmentations.image_prep import kitti_transform
 import os 
 import torch 
@@ -11,7 +11,8 @@ import sys
 from .metrics import bad_n_error, AreaSource, two_disp_l1_loss
 from .convert_weights import convert_weights
 from torch.nn.parallel import DistributedDataParallel
-import math 
+import numpy as np
+import disparity_interpolation
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 REPRODS_PATH = os.path.join(SCRIPT_DIR,'..','reproductions')
@@ -44,8 +45,9 @@ class GenericRunner():
         
         outputs = []
 
-        if not isinstance(prediction,list):
-            prediction = [prediction]
+        assert(isinstance(prediction,list))
+        # if not isinstance(prediction,list):
+        #     prediction = [prediction]
 
         for o in prediction:
             temp = o.cpu()
@@ -59,7 +61,6 @@ class GenericRunner():
                 temp = temp[0,:, :, :]
 
             outputs.append(temp)
-
         return {
             "runtime" : end_time - start_time,
             "outputs" : outputs,
@@ -96,7 +97,7 @@ class GenericRunner():
                 print("=> no checkpoint found at '{}'".format(weights_path))
         return model
 
-    def get_model_io(self,batch):
+    def get_model_io(self,batch, keys):
         raise NotImplementedError()
 
     def get_model_io_from_sample(self, sample, keys):
@@ -108,14 +109,14 @@ class GenericRunner():
     def loss_accuracy_function(self, outputs, targets):
         raise NotImplementedError()
 
-    def validate(self, model, loader):
+    def validate(self, model, loader, keys):
         valid_iteration = 0
         epoch_loss = 0
         acc_all = 0
         model.eval()
         for iteration, batch in enumerate(loader):
 
-            inputs,targets = self.get_model_io(batch)
+            inputs,targets = self.get_model_io(batch, keys)
             inputs = [Variable(x,requires_grad=False) for x in inputs]
 
             if self.device == 'cuda':
@@ -138,14 +139,14 @@ class GenericRunner():
         return (acc_all/valid_iteration, epoch_loss /valid_iteration)
 
 
-    def train(self, epoch, model, loader, optimizer):
+    def train(self, epoch, model, loader, optimizer, keys):
         epoch_loss = 0
         valid_iteration = 0
         acc_all = 0
 
         for iteration, batch in enumerate(loader):
 
-            inputs,targets = self.get_model_io(batch)
+            inputs,targets = self.get_model_io(batch,keys)
             inputs = [Variable(x,requires_grad=False) for x in inputs]
             
             if self.device =='cuda':
@@ -220,8 +221,11 @@ class RAFTRunner(GenericRunner):
     def get_model_io_from_sample(self, sample, keys):
         return [sample[keys['l0']],sample[keys['l1']]], [sample[keys['fl']]]
     
-    def get_model_io(self,batch):
-        return [torch.squeeze(batch[0],1),torch.squeeze(batch[1],1)], [torch.squeeze(batch[2],1).float()]
+    def get_model_io(self,batch, keys):
+        return [torch.squeeze(batch[keys['l0']],1),
+            torch.squeeze(batch[keys['r0']],1)], [
+                
+            torch.squeeze(batch[keys['d0']],1).float()]
     
     def loss_accuracy_function(self, outputs, targets):
         raise NotImplementedError()
@@ -286,8 +290,11 @@ class LEASTereoRunner(GenericRunner):
     def get_model_io_from_sample(self, sample, keys):
         return [sample[keys['l0']],sample[keys['r0']]], [sample[keys['d0']]]
 
-    def get_model_io(self,batch):
-        return [torch.squeeze(batch[0],1),torch.squeeze(batch[1],1)], [torch.squeeze(batch[2],1).float()]
+    def get_model_io(self,batch ,keys):
+        return [torch.squeeze(batch[keys['l0']],1),
+            torch.squeeze(batch[keys['r0']],1)], [
+
+            torch.squeeze(batch[keys['d0']],1).float()]
 
     def loss_accuracy_function(self, outputs, targets):
             target= targets[0]
@@ -346,11 +353,13 @@ class STSEarlyFusionConcatRunner(LEASTereoRunner):
     def get_model_io_from_sample(self, sample, keys):
         return [sample[keys['l0']],sample[keys['r0']],sample[keys['l1']],sample[keys['r1']]], [sample[keys['d0']]]
 
-    def get_model_io(self,batch):
-        return [torch.squeeze(batch[0],1),
-                torch.squeeze(batch[1],1),
-                torch.squeeze(batch[2],1),
-                torch.squeeze(batch[3],1)], [torch.squeeze(batch[4],1).float()]
+    def get_model_io(self,batch, keys):
+        return [torch.squeeze(batch[keys['l0']],1),
+                torch.squeeze(batch[keys['r0']],1),
+                torch.squeeze(batch[keys['l1']],1),
+                torch.squeeze(batch[keys['r1']],1)], [
+                    
+                torch.squeeze(batch[keys['d0']],1).float()]
 
 class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
     def __init__(self,args, training=False) -> None:
@@ -369,22 +378,23 @@ class STSEarlyFusionConcat2Runner(STSEarlyFusionConcatRunner):
 
     def loss_accuracy_function(self, outputs, targets):
             a = 0.75
-            d0 = outputs[:,0]
-            d1 = outputs[:,1]
+            d0 = outputs[0]
+            d1 = outputs[1]
             acc = bad_n_error(3,d0.detach().cpu().numpy(),targets[0].detach().cpu().numpy(),AreaSource.BOTH,max_val=self.maxdisp)
             acc = 100 - acc 
-
             return (two_disp_l1_loss(d0,d1,targets[0],targets[1],self.maxdisp,a=a),acc)
 
     def get_model_io_from_sample(self, sample, keys):
         return [sample[keys['l0']],sample[keys['r0']],sample[keys['l1']],sample[keys['r1']]], [sample[keys['d0']],sample[keys['d1']]]
 
-    def get_model_io(self,batch):
-        return [torch.squeeze(batch[0],1),
-                torch.squeeze(batch[1],1),
-                torch.squeeze(batch[2],1),
-                torch.squeeze(batch[3],1)], [torch.squeeze(batch[4],1).float(),
-                                            torch.squeeze(batch[5],1).float()]
+    def get_model_io(self,batch, keys):
+        return [torch.squeeze(batch[keys['l0']],1),
+                torch.squeeze(batch[keys['r0']],1),
+                torch.squeeze(batch[keys['l1']],1),
+                torch.squeeze(batch[keys['r1']],1)], [
+                    
+                torch.squeeze(batch[keys['d0']],1).float(),
+                torch.squeeze(batch[keys['d1']],1).float()]
 
     def transform(self, inputs, keys, is_test_phase):
 
@@ -455,6 +465,73 @@ class STSLateFusion2Runner(STSEarlyFusionConcat2Runner):
             inputs[keys['fgmap']] = kitti_transform(inputs[keys['fgmap']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
 
         return inputs 
+        
+
+class STSLateFusionGTFlowRunner(STSEarlyFusionConcat2Runner):
+    def __init__(self,args, training=False) -> None:
+        from models.STSLateFusionGTFlow import STSLateFusionGTFlow
+        super().__init__(args,training)
+        self.model_cls = STSLateFusionGTFlow
+
+        if self.training:
+            self.keys = set(['l0','r0','d0','d1'])
+        else:
+            self.keys = (['l0','r0','d0','d0noc','d1','d1noc','fgmap','resolution','index'])
+
+    def transform(self, inputs, keys, is_test_phase):
+
+        h,w,c = inputs[keys['l0']].shape[-3:]
+        new_height = self.crop_height_out
+        new_width = self.crop_width_out
+        random_crop = None
+        if self.training and not is_test_phase:
+            new_height = self.crop_height #high_res 288 # low_res 168
+            new_width = self.crop_width #high_res 576 # low_res 336
+            random_crop = (randint(0,w-new_width),
+                        randint(0,h-new_height))
+
+
+        inputs[keys['l0']] = kitti_transform(inputs[keys['l0']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['r0']] = kitti_transform(inputs[keys['r0']], new_height, new_width, start_corner=random_crop) 
+        inputs[keys['d0']] = kitti_transform(inputs[keys['d0']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+        inputs[keys['d1']] = kitti_transform(inputs[keys['d1']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+        
+        disp1 = inputs[keys['d1']]
+        disp1[disp1 == 0] = -1
+        inputs[keys['d1']] = disparity_interpolation.disparity_interpolator(np.ascontiguousarray(disp1[0]))[np.newaxis,:]
+
+                
+        if not self.training:
+            inputs[keys['d0noc']] = kitti_transform(inputs[keys['d0noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+            inputs[keys['d1noc']] = kitti_transform(inputs[keys['d1noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+            inputs[keys['fgmap']] = kitti_transform(inputs[keys['fgmap']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
+
+        return inputs 
+
+    def gt_label_to_idx_map(self):
+        return {'d0':0}
+
+    def loss_accuracy_function(self, outputs, targets):
+            target= targets[0]
+            output = torch.squeeze(outputs[0],1)
+            mask = (target < self.maxdisp) & (target > 0)
+            mask.detach_()
+            valid_target_px = target[mask]
+            acc = 100 - bad_n_error(3,output.detach().cpu().numpy(),target.detach().cpu().numpy(),AreaSource.BOTH,max_val=self.maxdisp)
+            if(valid_target_px.size()[0] <= 0):
+                return (0,acc)
+            else:
+                return (F.smooth_l1_loss(output[mask],valid_target_px),acc)
+                
+    def get_model_io_from_sample(self, sample, keys):
+        return [sample[keys['l0']],sample[keys['r0']],sample[keys['d1']]], [sample[keys['d0']]]
+
+    def get_model_io(self,batch, keys):
+        return [torch.squeeze(batch[keys['l0']],1),
+                torch.squeeze(batch[keys['r0']],1),
+                torch.squeeze(batch[keys['d1']],1)], [
+                    
+                torch.squeeze(batch[keys['d0']],1).float()]
 
 class STSEarlyFusionConcat2BigRunner(STSEarlyFusionConcat2Runner):
     def __init__(self,args, training=False) -> None:

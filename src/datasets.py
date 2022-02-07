@@ -31,9 +31,7 @@ class Kitti15Dataset(data.Dataset):
             if k in self.keys:
                 self.key_idxs[k] = idx
                 idx+=1
-            
-
-
+        
 
     def get_key_idxs(self):
         return self.key_idxs
@@ -70,18 +68,18 @@ class Kitti15Dataset(data.Dataset):
         labels = []
         if 'd0' in self.keys:
             disparity_t0_path = os.path.join(directory,'disp_occ_0',f'{index_string}_10.png')
-            labels.append(load_rgb_img(disparity_t0_path)/256)
+            labels.append(load_rgb_img(disparity_t0_path,dtype=np.float32)/256)
         if 'd0noc' in self.keys:
             disparity_t0_noc_path = os.path.join(directory,'disp_noc_0',f'{index_string}_10.png')
-            labels.append(load_rgb_img(disparity_t0_noc_path)/256)
+            labels.append(load_rgb_img(disparity_t0_noc_path,dtype=np.float32)/256)
 
 
         if 'd1' in self.keys:
             disparity_t1_path = os.path.join(directory,'disp_occ_1',f'{index_string}_10.png')
-            labels.append(load_rgb_img(disparity_t1_path)/256)
+            labels.append(load_rgb_img(disparity_t1_path,dtype=np.float32)/256)
         if 'd1noc' in self.keys:
             disparity_t1_noc_path = os.path.join(directory,'disp_noc_1',f'{index_string}_10.png')
-            labels.append(load_rgb_img(disparity_t1_noc_path)/256)
+            labels.append(load_rgb_img(disparity_t1_noc_path,dtype=np.float32)/256)
 
         if 'fl' in self.keys:
             import cv2
@@ -133,11 +131,10 @@ class Kitti15Dataset(data.Dataset):
       
         return outputs
 
-    def eval_to_csv(self, X,y,gt_label_to_idx_map,runtime, writer : csv.writer, write_headers=False):
+    def eval_to_csv(self,X,y,gt_label_to_idx_map,runtime, writer : csv.writer, write_headers=False):
         keys = self.get_key_idxs()
         headers = ['sample','runtime']
         datas = [y[keys['index']],runtime]
-
         disp_frames = []
         if "d0" in gt_label_to_idx_map:
             disp_frames += ["d0"]
@@ -152,7 +149,6 @@ class Kitti15Dataset(data.Dataset):
             # we only have fg maps for first frame
             if d == "d0":
                 fg_mask = y[keys['fgmap']] 
-
                 nocc_fg_d1 = bad_n_error(3,
                     X[gt_label_to_idx_map[d]],
                     gt_noc,

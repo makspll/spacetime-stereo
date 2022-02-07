@@ -2,6 +2,7 @@ from models.STSEarlyFusionTimeMatch import STSEarlyFusionTimeMatch
 from models.STSEarlyFusionConcat import STSEarlyFusionConcat
 from models.STSEarlyFusionConcat2 import STSEarlyFusionConcat2
 from models.STSEarlyFusionConcat2Big import STSEarlyFusionConcat2Big
+from models.STSLateFusion2 import STSLateFusion2
 from models.LEAStereo import LEASTereoOrigMock, LEAStereo
 
 import re 
@@ -26,6 +27,8 @@ def convert_weights(state_dict,weights_source, weights_target):
     replacings = []
     filters = set()
     nets_altering_cost_volume = set([STSEarlyFusionConcat,STSEarlyFusionConcat2,STSEarlyFusionConcat2Big,STSEarlyFusionTimeMatch])
+    nets_altering_disparity_outputs = set([STSEarlyFusionConcat2,STSEarlyFusionConcat2Big,STSEarlyFusionTimeMatch,STSLateFusion2])
+
     if (weights_source is LEASTereoOrigMock):
         print("===> converting from original LEAStereo weights")
 
@@ -78,7 +81,7 @@ def convert_weights(state_dict,weights_source, weights_target):
                 "module.matching.stem1.bn.running_var"])
 
         # nets which output multiple disparities, or change matching network output 
-        if (weights_target is not STSEarlyFusionConcat and not weights_target is LEAStereo):
+        if weights_target in nets_altering_disparity_outputs: #not STSEarlyFusionConcat and not weights_target is LEAStereo):
             print("===> converting to " + str(weights_target) )
             filters.update([ "module.matching.conv_out.conv.weight",
                         "module.matching.conv_out.bn.weight",

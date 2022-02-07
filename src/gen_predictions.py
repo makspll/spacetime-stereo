@@ -4,7 +4,7 @@ import numpy as np
 from skimage.io import imsave 
 import csv
 import torch
-from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner , STSEarlyFusionConcat2Runner, STSEarlyFusionConcat2BigRunner, LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner,RAFTRunner
+from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner , STSEarlyFusionConcat2Runner, STSEarlyFusionConcat2BigRunner, LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner,RAFTRunner, STSLateFusion2Runner,STSLateFusionGTFlowRunner
 from datasets import Kitti15Dataset
 from args import PARSER
 torch.manual_seed(0)
@@ -26,6 +26,8 @@ METHODS = {
     'STSEarlyFusionConcat2' : lambda args: STSEarlyFusionConcat2Runner(args, training=False),
     'STSEarlyFusionConcat2Big' : lambda args: STSEarlyFusionConcat2BigRunner(args, training=False),
     'STSEarlyFusionTimeMatch' : lambda args: STSEarlyFusionTimeMatchRunner(args, training=False),
+    'STSLateFusionGTFlow' : lambda args: STSLateFusionGTFlowRunner(args,training=False),
+    'STSLateFusion2' : lambda args : STSLateFusion2Runner(args,training=False),
     'RAFT' : lambda args: RAFTRunner(args, training=False)
 }
 
@@ -86,7 +88,6 @@ if __name__ == "__main__":
                 gt_label_to_idx_map,
                 output["runtime"],csvwriter, write_headers=write_headers)
 
-
         # save images for reference
         for i,o in enumerate(output["outputs"]):
             
@@ -100,6 +101,7 @@ if __name__ == "__main__":
             else:
                 permuted = np.moveaxis(o,0,-1)
                 o = flow_to_image(permuted).astype('uint8')
+
 
             imsave(target_dir[0:-4] + f'_{corr_gt}' + ".png", o)
 

@@ -4,7 +4,7 @@ from time import time
 import numpy as np
 import torch
 from torch import optim
-from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner,STSEarlyFusionConcat2Runner,STSEarlyFusionConcat2BigRunner,LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner,STSLateFusion2Runner
+from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner,STSEarlyFusionConcat2Runner,STSEarlyFusionConcat2BigRunner,LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner,STSLateFusion2Runner,STSLateFusionGTFlowRunner
 from datasets import Kitti15Dataset
 from args import PARSER_TRAIN
 from torch.utils.data import DataLoader
@@ -39,7 +39,8 @@ METHODS = {
     'STSEarlyFusionConcat2': lambda args: STSEarlyFusionConcat2Runner(args,training=True),
     'STSEarlyFusionConcat2Big': lambda args: STSEarlyFusionConcat2BigRunner(args,training=True),
     'STSEarlyFusionTimeMatch': lambda args: STSEarlyFusionTimeMatchRunner(args,training=True),
-    'STSLateFusion2': lambda args: STSLateFusion2Runner(args,training=True)
+    'STSLateFusion2': lambda args: STSLateFusion2Runner(args,training=True),
+    'STSLateFusionGTFlow' : lambda args: STSLateFusionGTFlowRunner(args, training=True)
 }
 DATASETS = {
     'kitti2015': lambda *args: Kitti15Dataset(*args)
@@ -118,6 +119,8 @@ if __name__ == "__main__":
         args.permute_keys,
         args.replace_keys)
 
+    keys_val = dataset_val.get_key_idxs()
+
     indices_train = [splits[args.dataset][args.method]["training"][x] for x in args.trainsplits]
     dataset_train = DATASETS[args.dataset](
         args.datasets_dir,
@@ -129,6 +132,8 @@ if __name__ == "__main__":
         args.permute_keys,
         args.replace_keys)
 
+    keys_train = dataset_train.get_key_idxs()
+    
     resume_path = args.resume
     model = method.get_model(resume_path, METHODS[args.resume_method](args).model_cls)
     model.eval()
@@ -207,7 +212,7 @@ if __name__ == "__main__":
     print("===> Beginning Training")
     for epoch in range(training_epoch_start, epochs + 1):
         start = time()
-        acc_t,loss_t=method.train(epoch,model,train_loader, optimizer)
+        acc_t,loss_t=method.train(epoch,model,train_loader, optimizer, keys_train)
         
         acc_t = torch.Tensor([acc_t]).cuda()
         loss_t = torch.Tensor([loss_t]).cuda()
@@ -217,7 +222,7 @@ if __name__ == "__main__":
             torch.distributed.reduce(loss_t,0)
 
         if args.local_rank <= 0: 
-            acc_v,loss_v=method.validate(model,val_loader)
+            acc_v,loss_v=method.validate(model,val_loader, keys_val)
         
                 
             acc_v = torch.Tensor([acc_v]).cuda()
