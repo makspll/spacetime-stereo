@@ -4,7 +4,7 @@ from time import time
 import numpy as np
 import torch
 from torch import optim
-from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner,STSEarlyFusionConcat2Runner,STSEarlyFusionConcat2BigRunner,LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner,STSLateFusion2Runner,STSLateFusionGTFlowRunner
+from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner,STSEarlyFusionConcat2Runner,STSEarlyFusionConcat2BigRunner,LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner, STSLateFusion2InvRunner,STSLateFusion2Runner,STSLateFusionGTFlowRunner
 from datasets import Kitti15Dataset
 from args import PARSER_TRAIN
 from torch.utils.data import DataLoader
@@ -40,7 +40,8 @@ METHODS = {
     'STSEarlyFusionConcat2Big': lambda args: STSEarlyFusionConcat2BigRunner(args,training=True),
     'STSEarlyFusionTimeMatch': lambda args: STSEarlyFusionTimeMatchRunner(args,training=True),
     'STSLateFusion2': lambda args: STSLateFusion2Runner(args,training=True),
-    'STSLateFusionGTFlow' : lambda args: STSLateFusionGTFlowRunner(args, training=True)
+    'STSLateFusionGTFlow' : lambda args: STSLateFusionGTFlowRunner(args, training=True),
+    'STSLateFusion2Inv' : lambda args : STSLateFusion2InvRunner(args, trainint=True)
 }
 DATASETS = {
     'kitti2015': lambda *args: Kitti15Dataset(*args)

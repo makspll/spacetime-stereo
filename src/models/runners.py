@@ -432,9 +432,9 @@ class STSLateFusion2Runner(STSEarlyFusionConcat2Runner):
         self.model_cls = STSLateFusion2
 
         if self.training:
-            self.keys = set(['l0','r0','l1','r1','d0','d1','fl'])
+            self.keys = set(['l0','r0','l1','r1','d0','d1'])
         else:
-            self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fl','fgmap','resolution','index'])
+            self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fgmap','resolution','index'])
 
     def transform(self, inputs, keys, is_test_phase):
 
@@ -457,7 +457,6 @@ class STSLateFusion2Runner(STSEarlyFusionConcat2Runner):
         inputs[keys['r1']] = kitti_transform(inputs[keys['r1']], new_height, new_width, start_corner=random_crop) 
         inputs[keys['d0']] = kitti_transform(inputs[keys['d0']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
         inputs[keys['d1']] = kitti_transform(inputs[keys['d1']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
-        inputs[keys['fl']] = kitti_transform(inputs[keys['fl']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
 
         if not self.training:
             inputs[keys['d0noc']] = kitti_transform(inputs[keys['d0noc']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
@@ -465,7 +464,19 @@ class STSLateFusion2Runner(STSEarlyFusionConcat2Runner):
             inputs[keys['fgmap']] = kitti_transform(inputs[keys['fgmap']], new_height, new_width, start_corner=random_crop,normalize_rgb=False) 
 
         return inputs 
-        
+
+class STSLateFusion2InvRunner(STSLateFusion2Runner):
+    def __init__(self,args, training=False) -> None:
+        from models.STSLateFusion2Inv import STSLateFusion2Inv
+        super().__init__(args,training)
+        self.model_cls = STSLateFusion2Inv
+
+        if self.training:
+            self.keys = set(['l0','r0','l1','r1','d0','d1','fl'])
+        else:
+            self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fl','fgmap','resolution','index'])
+
+
 
 class STSLateFusionGTFlowRunner(STSEarlyFusionConcat2Runner):
     def __init__(self,args, training=False) -> None:
