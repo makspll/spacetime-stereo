@@ -40,4 +40,4 @@ class STSLateFusionGTFlow(nn.Module):
         # skip connection
         refined_disparities[:,0] += disp0[:,0]
 
-        return [refined_disparities]
+        return [refined_disparities[:,0]]

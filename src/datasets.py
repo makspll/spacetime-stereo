@@ -92,12 +92,6 @@ class Kitti15Dataset(data.Dataset):
             flo_img[np.abs(flo_img) < 1e-10] = 1e-10
             flo_img[invalid, :] =  0# MAX_FLOW_KITTI * 2
             
-            # fl = load_rgb_img(flow_left_path).astype(float)
-            # print(fl[:,:,2].mean())
-            # fl[:,:,0:2] = (fl[:,:,0:2] - 2**15) / 64.0
-            # # fl[:,:,2] = fl[:,:,2] > 0
-            # print(fl[:,:,2].max())
-            # labels.append(fl)
             labels.append(flo_img)
 
         outputs = [*inputs,*labels]
@@ -134,7 +128,7 @@ class Kitti15Dataset(data.Dataset):
     def eval_to_csv(self,X,y,gt_label_to_idx_map,runtime, writer : csv.writer, write_headers=False):
         keys = self.get_key_idxs()
         headers = ['sample','runtime']
-        datas = [y[keys['index']],runtime]
+        datas = [y[keys['index']],f"{runtime:7.3f}"]
         disp_frames = []
         if "d0" in gt_label_to_idx_map:
             disp_frames += ["d0"]
@@ -142,8 +136,8 @@ class Kitti15Dataset(data.Dataset):
             disp_frames += ["d1"]
 
         for d in disp_frames:
-            gt_noc = y[keys[f"{d}noc"]].astype(float)
-            gt_oc = y[keys[d]].astype(float)
+            gt_noc = y[keys[f"{d}noc"]]
+            gt_oc = y[keys[d]]
             headers += [f'nocc_fg_{d}',f'nocc_all_{d}',f'occ_fg_{d}',f'occ_all_{d}']
 
             # we only have fg maps for first frame
@@ -156,31 +150,32 @@ class Kitti15Dataset(data.Dataset):
                     fg_mask=fg_mask)   
                 occ_fg_d1 = bad_n_error(3,
                     X[gt_label_to_idx_map[d]],
-                    gt_oc,
-                    AreaSource.FOREGROUND,
-                    fg_mask=fg_mask)    
+                    gt_oc)    
 
             nocc_all_d1 = bad_n_error(3,
                 X[gt_label_to_idx_map[d]],
-                gt_noc) 
+                gt_noc,
+                AreaSource.FOREGROUND,
+                fg_mask=fg_mask) 
 
             occ_all_d1 = bad_n_error(3,
                 X[gt_label_to_idx_map[d]],
                 gt_oc) 
 
             datas += [  
-                nocc_fg_d1,
-                nocc_all_d1,
-                occ_fg_d1,
-                occ_all_d1,
+                f"{nocc_fg_d1:10.3f}",
+                f"{nocc_all_d1:11.3f}",
+                f"{occ_fg_d1:9.3f}",
+                f"{occ_all_d1:10.3f}",
             ]
 
         if "fl" in gt_label_to_idx_map:
             gt_oc = y[keys["fl"]].astype(float)
             headers += ["fl_all"]
-            datas += [bad_n_error(3,
-                X[gt_label_to_idx_map["fl"]],
-                gt_oc)]
+            fl_oc = bad_n_error(3,
+                X[gt_label_to_idx_map['fl']],
+                gt_oc)
+            datas += [f"{fl_oc:5.3f}\t"]
 
         if write_headers:
             writer.writerow(headers)

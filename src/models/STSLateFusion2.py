@@ -8,6 +8,7 @@ import re
 from .raft.raft import RAFT
 import numpy as np
 from .warps import invert_flow,warp_with_flow
+from scipy.ndimage import median_filter
 
 class STSLateFusion2(nn.Module):
     def __init__(self, max_disp=192):
@@ -58,10 +59,16 @@ class STSLateFusion2(nn.Module):
 
         # flow left 
         flow_left = self.flow(l0_img,l1_img)[-1].detach().cpu()
-        warped_d1 = warp_with_flow(disp1[:].detach().cpu(),invert_flow(flow_left)).cuda()
+        inv_flow =  invert_flow(flow_left)
+        warped_d1 = warp_with_flow(disp1[:].detach().cpu(),inv_flow)
+        for i in range(warped_d1.shape[0]):
+            warped_d1[i] = torch.Tensor(median_filter(warped_d1[i],size=3))
+            # warped_d1[i] = torch.Tensor(median_filter(warped_d1[i],size=5))
+            # warped_d1[i] = torch.Tensor(median_filter(warped_d1[i],size=7))
+        warped_d1 = warped_d1.cuda()
+        
+
         flow_left = flow_left.cuda()
-        # flow right
-        # flow_right = self.flow(r0_img,r1_img)[-1]
 
         # autoencoder
         # combine all of the above, and 'refine' the disparities

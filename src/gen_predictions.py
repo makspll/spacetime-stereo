@@ -4,7 +4,7 @@ import numpy as np
 from skimage.io import imsave 
 import csv
 import torch
-from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner , STSEarlyFusionConcat2Runner, STSEarlyFusionConcat2BigRunner, LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner,RAFTRunner, STSLateFusion2Runner,STSLateFusionGTFlowRunner
+from models.runners import LEASTereoRunner, STSEarlyFusionConcatRunner , STSEarlyFusionConcat2Runner, STSEarlyFusionConcat2BigRunner, LEAStereoOrigMockRunner,STSEarlyFusionTimeMatchRunner,RAFTRunner, STSLateFusion2InvRunner, STSLateFusion2Runner,STSLateFusionGTFlowRunner
 from datasets import Kitti15Dataset
 from args import PARSER
 torch.manual_seed(0)
@@ -28,6 +28,7 @@ METHODS = {
     'STSEarlyFusionTimeMatch' : lambda args: STSEarlyFusionTimeMatchRunner(args, training=False),
     'STSLateFusionGTFlow' : lambda args: STSLateFusionGTFlowRunner(args,training=False),
     'STSLateFusion2' : lambda args : STSLateFusion2Runner(args,training=False),
+    'STSLateFusion2Inv' : lambda args : STSLateFusion2InvRunner(args, training=False),
     'RAFT' : lambda args: RAFTRunner(args, training=False)
 }
 
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     else:
         resume_cls = None 
 
-    indices = splits[args.dataset][args.method][args.datasetsplit][args.splitname]
+    indices = splits[args.dataset][args.datasetsplit][args.splitname]
     dataset = DATASETS[args.dataset](
         args.datasets_dir,
         args.datasetsplit == "training", 
@@ -102,24 +103,26 @@ if __name__ == "__main__":
                 permuted = np.moveaxis(o,0,-1)
                 o = flow_to_image(permuted).astype('uint8')
 
-
             imsave(target_dir[0:-4] + f'_{corr_gt}' + ".png", o)
 
     # average each column apart from first one
     average_row = []
+    len_first_row = 0
     with open(eval_file, 'r') as f:
         csvreader = csv.reader(f)
         next(csvreader)
 
         rows = []
+        fmt_strings = []
         for row in csvreader:
+            len_first_row=len(row[0])
             rows.append(row[1:])
-
+            fmt_strings = [f"{len(x)}.3f" for x in row[1:]]
         rows = np.array(rows).astype(float)
-        average_row = list(rows.mean(axis=0).astype(str))
+        average_row = [f"{x:{fmt}}" for fmt,x in zip(fmt_strings,rows.mean(axis=0))]
     
     with open(eval_file, 'a') as f:
         csvwriter = csv.writer(f)
 
-        average_row.insert(0,'AVG')
+        average_row.insert(0,f"{'AVG':{len_first_row}}")
         csvwriter.writerow(average_row)

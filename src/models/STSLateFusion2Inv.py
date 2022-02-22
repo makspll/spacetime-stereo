@@ -58,12 +58,12 @@ class STSLateFusion2Inv(nn.Module):
 
         # flow left inversed
         flows_left_inv = self.flow(l0_img,l1_img)
-        flow_left_inv = flows_left_inv[-1]
-        warped_d1 = warp_with_flow(disp1[:],flow_left_inv)
+        flow_left_inv = flows_left_inv[-1].detach().cpu()
+        warped_d1 = warp_with_flow(disp1[:].detach().cpu(),flow_left_inv).cuda()
 
         # autoencoder
         # combine all of the above, and 'refine' the disparities
-        refined_disparities = self.refiner(torch.cat((disp0,warped_d1,flow_left_inv),1))
+        refined_disparities = self.refiner(torch.cat((disp0,warped_d1,flow_left_inv.cuda()),1))
         # skip connection + warping
 
         refined_disparities[:,0] += disp0[:,0]

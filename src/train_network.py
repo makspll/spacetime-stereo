@@ -20,8 +20,8 @@ def set_seeds(seed = 0):
     np.random.seed(0)
     torch.cuda.manual_seed(0)
     torch.cuda.manual_seed_all(0)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -41,7 +41,7 @@ METHODS = {
     'STSEarlyFusionTimeMatch': lambda args: STSEarlyFusionTimeMatchRunner(args,training=True),
     'STSLateFusion2': lambda args: STSLateFusion2Runner(args,training=True),
     'STSLateFusionGTFlow' : lambda args: STSLateFusionGTFlowRunner(args, training=True),
-    'STSLateFusion2Inv' : lambda args : STSLateFusion2InvRunner(args, trainint=True)
+    'STSLateFusion2Inv' : lambda args : STSLateFusion2InvRunner(args, training=True)
 }
 DATASETS = {
     'kitti2015': lambda *args: Kitti15Dataset(*args)
@@ -108,8 +108,7 @@ if __name__ == "__main__":
     epochs = args.epochs
     batch_size = args.batch
 
-    indices_val = splits[args.dataset][args.method]["training"][args.valsplit]
-
+    indices_val = splits[args.dataset]["training"][args.valsplit]
     dataset_val = DATASETS[args.dataset](
         args.datasets_dir,
         True, 
@@ -122,7 +121,7 @@ if __name__ == "__main__":
 
     keys_val = dataset_val.get_key_idxs()
 
-    indices_train = [splits[args.dataset][args.method]["training"][x] for x in args.trainsplits]
+    indices_train = [splits[args.dataset]["training"][x] for x in args.trainsplits]
     dataset_train = DATASETS[args.dataset](
         args.datasets_dir,
         True, 

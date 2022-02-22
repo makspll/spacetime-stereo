@@ -49,16 +49,17 @@ class GenericRunner():
         # if not isinstance(prediction,list):
         #     prediction = [prediction]
 
+
         for o in prediction:
             temp = o.cpu()
             temp = temp.detach()
             temp = temp.numpy()
 
             # if it's flow it will need more dimensions
-            if temp.shape[1] <= 1:
-                temp = temp[0,0, :, :]
-            else:
-                temp = temp[0,:, :, :]
+            # if temp.shape[1] <= 1:
+            #     temp = temp[0,0, :]
+            # else:
+            temp = temp[0,:]
 
             outputs.append(temp)
         return {
@@ -471,10 +472,6 @@ class STSLateFusion2InvRunner(STSLateFusion2Runner):
         super().__init__(args,training)
         self.model_cls = STSLateFusion2Inv
 
-        if self.training:
-            self.keys = set(['l0','r0','l1','r1','d0','d1','fl'])
-        else:
-            self.keys = (['l0','r0','l1','r1','d0','d0noc','d1','d1noc','fl','fgmap','resolution','index'])
 
 
 

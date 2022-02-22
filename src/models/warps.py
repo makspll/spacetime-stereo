@@ -47,7 +47,7 @@ def warp_with_flow(img,flow, mask=None, ):
     n,c,h,w = img.size()
     hh,hw = (h)/2,(w)/2
     grid = torch.Tensor(np.moveaxis(np.meshgrid(np.linspace(-1,1,num=w),np.linspace(-1,1,num=h)),0,-1))
-    n_ofl = flow / torch.Tensor([hw,hh]) + grid
+    n_ofl = flow / torch.Tensor([hw,hh],device=img.device) + grid
 
     # blow up non-valid values, causes them to land outsid boundary
     # important: invalid values for flow and disparity must be set to 0

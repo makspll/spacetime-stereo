@@ -22,7 +22,7 @@ except:
 
 
 class RAFT(nn.Module):
-    def __init__(self, small=False,dropout=0,alternate_corr=False,mixed_precision=False,iterations=20):
+    def __init__(self, small=False,dropout=0,alternate_corr=False,mixed_precision=False,iterations=24):
         super(RAFT, self).__init__()
     # parser.add_argument('--name', default='raft', help="name your experiment")
     # parser.add_argument('--stage', help="determines which dataset to use for training") 
