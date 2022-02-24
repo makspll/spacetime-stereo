@@ -8,6 +8,7 @@ import re
 from .raft.raft import RAFT
 import numpy as np
 from .warps import warp_with_flow
+from scipy.ndimage import median_filter
 
 class STSLateFusion2Inv(nn.Module):
     def __init__(self, max_disp=192):
@@ -61,6 +62,12 @@ class STSLateFusion2Inv(nn.Module):
         flow_left_inv = flows_left_inv[-1].detach().cpu()
         warped_d1 = warp_with_flow(disp1[:].detach().cpu(),flow_left_inv).cuda()
 
+        for i in range(warped_d1.shape[0]):
+            warped_d1[i] = torch.Tensor(median_filter(warped_d1[i],size=3))
+            # warped_d1[i] = torch.Tensor(median_filter(warped_d1[i],size=5))
+            # warped_d1[i] = torch.Tensor(median_filter(warped_d1[i],size=7))
+        warped_d1 = warped_d1.cuda()
+        
         # autoencoder
         # combine all of the above, and 'refine' the disparities
         refined_disparities = self.refiner(torch.cat((disp0,warped_d1,flow_left_inv.cuda()),1))
