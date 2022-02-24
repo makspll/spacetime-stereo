@@ -36,7 +36,7 @@ class LEAStereo(nn.Module):
 
         cost = self.matching(cost)     
         disp = self.disp(cost)    
-        return disp
+        return [disp[:,0]]
     
     
 
