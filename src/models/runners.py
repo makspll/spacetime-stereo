@@ -299,7 +299,7 @@ class LEASTereoRunner(GenericRunner):
 
     def loss_accuracy_function(self, outputs, targets):
             target= targets[0]
-            output = torch.squeeze(outputs,1)
+            output = outputs[0]
             mask = (target < self.maxdisp) & (target > 0)
             mask.detach_()
             valid_target_px = target[mask]
